@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# C build artifacts
+*.o
+*.out
+a.out
+/build/
+
+# capture files
+*.pcap
+*.pcapng
+
+# editor cruft
+.vscode/
+*.swp
+.DS_Store

@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""sixctl - the ipv6-fun flagship CLI.
+
+recon (addrs, ndp) works today by shelling out to iproute2. the
+attack-capable subcommands (ra, scan, craft) need scapy and are stubbed
+until their own implementation pass - see demos/10-attack-lab/README.md
+for the reasoning.
+"""
+
+import argparse
+import re
+import subprocess
+import sys
+
+
+def classify(addr: str) -> str:
+    a = addr.lower()
+    if a == "::1":
+        return "loopback"
+    if a.startswith("fe80:"):
+        return "link-local unicast"
+    if re.match(r"^f[cd][0-9a-f]{2}:", a):
+        return "unique local (ULA)"
+    if a.startswith("ff0"):
+        return "multicast"
+    if a.startswith(("2", "3")):
+        return "global unicast (GUA)"
+    return "unknown/other"
+
+
+def run_ip(args: list[str]) -> str:
+    try:
+        result = subprocess.run(
+            ["ip", *args], capture_output=True, text=True, check=True
+        )
+    except FileNotFoundError:
+        print("sixctl needs iproute2 (the 'ip' command) - Linux only", file=sys.stderr)
+        sys.exit(1)
+    except subprocess.CalledProcessError as exc:
+        print(exc.stderr, file=sys.stderr)
+        sys.exit(exc.returncode)
+    return result.stdout
+
+
+def cmd_addrs(_args: argparse.Namespace) -> None:
+    output = run_ip(["-6", "addr", "show"])
+    iface = ""
+    for line in output.splitlines():
+        m = re.match(r"^\d+:\s+([^:@]+)", line)
+        if m:
+            iface = m.group(1)
+            continue
+        m = re.search(
+            r"inet6\s+([0-9a-fA-F:]+)/(\d+)\s+scope\s+(\S+)(.*)", line
+        )
+        if m:
+            addr, prefix, scope, flags = m.groups()
+            print(f"{iface:<10} {addr}/{prefix}")
+            print(f"{'':<10} scope={scope}  type={classify(addr)}{flags}")
+
+
+def cmd_ndp(_args: argparse.Namespace) -> None:
+    output = run_ip(["-6", "neigh", "show"])
+    if not output.strip():
+        print("(neighbor cache is empty)")
+        return
+    for line in output.splitlines():
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        addr = parts[0]
+        print(f"{addr:<40} type={classify(addr):<22} {' '.join(parts[1:])}")
+
+
+def cmd_not_implemented(name: str):
+    def handler(_args: argparse.Namespace) -> None:
+        print(f"sixctl {name}: not yet implemented (needs scapy)", file=sys.stderr)
+        sys.exit(1)
+
+    return handler
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="sixctl", description="ipv6-fun flagship CLI"
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_addrs = sub.add_parser("addrs", help="list & classify IPv6 addresses")
+    p_addrs.set_defaults(func=cmd_addrs)
+
+    p_ndp = sub.add_parser("ndp", help="dump the neighbor (NDP) cache")
+    p_ndp.set_defaults(func=cmd_ndp)
+
+    p_ra = sub.add_parser("ra", help="[TODO] sniff or send router advertisements")
+    p_ra.add_argument("action", choices=["sniff", "send"])
+    p_ra.set_defaults(func=cmd_not_implemented("ra"))
+
+    p_scan = sub.add_parser(
+        "scan", help="[TODO] multicast/NDP-based host enumeration"
+    )
+    p_scan.set_defaults(func=cmd_not_implemented("scan"))
+
+    p_craft = sub.add_parser("craft", help="[TODO] interactive header-chain builder")
+    p_craft.set_defaults(func=cmd_not_implemented("craft"))
+
+    return parser
+
+
+def main() -> None:
+    parser = build_parser()
+    args = parser.parse_args()
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()
