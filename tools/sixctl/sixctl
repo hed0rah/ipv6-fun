@@ -157,22 +157,73 @@ def scan_link(iface):
         print(f"{a:<42} {classify(a):<22} via {found[a]}")
 
 
+def load_seed(path):
+    """Read observed/hitlist IPv6 addresses (one per line, '#' comments, first token)."""
+    addrs = []
+    try:
+        with open(path) as fh:
+            for line in fh:
+                s = line.strip()
+                if not s or s.startswith("#"):
+                    continue
+                tok = re.split(r"[\s,]", s)[0]
+                try:
+                    addrs.append(ipaddress.IPv6Address(tok))
+                except ValueError:
+                    continue
+    except OSError as exc:
+        print(f"seed file: {exc}", file=sys.stderr)
+        sys.exit(1)
+    return addrs
+
+
 def cmd_scan(args):
-    if args.predict:
-        try:
-            net = ipaddress.ip_network(args.predict, strict=False)
-        except ValueError as exc:
-            print(f"bad prefix: {exc}", file=sys.stderr)
-            sys.exit(1)
-        if net.version != 6:
-            print("scan --predict needs an IPv6 prefix", file=sys.stderr)
-            sys.exit(1)
-        cands = gen_candidates(net, args.mac)
-        span = 128 - net.prefixlen
-        print(f"# target-generation for {net}")
-        print(f"# brute force would be 2^{span} addresses; a real scanner predicts")
-        print(f"# these {len(cands)} patterns instead (RFC 7707: low/word IIDs, DHCP")
-        print("# pools, EUI-64). " + ("probing each..." if args.probe else "dry run; pass --probe to test them."))
+    # target-list mode: predict from a prefix and/or ingest a seed/hitlist file.
+    # generation and probing are decoupled -- --out hands the list to any prober.
+    if args.predict or args.seed:
+        net = None
+        if args.predict:
+            try:
+                net = ipaddress.ip_network(args.predict, strict=False)
+            except ValueError as exc:
+                print(f"bad prefix: {exc}", file=sys.stderr)
+                sys.exit(1)
+            if net.version != 6:
+                print("scan --predict needs an IPv6 prefix", file=sys.stderr)
+                sys.exit(1)
+
+        cands, seen = [], set()
+
+        def add(a):
+            if a not in seen:
+                seen.add(a)
+                cands.append(a)
+
+        if net is not None:
+            for a in gen_candidates(net, args.mac):
+                add(a)
+        if args.seed:
+            for a in load_seed(args.seed):
+                add(a)
+
+        srcs = []
+        if net is not None:
+            srcs.append(f"predict {net}")
+        if args.seed:
+            srcs.append(f"seed {args.seed}")
+        print(f"# target list ({len(cands)} candidates) from: {', '.join(srcs)}")
+        if net is not None:
+            print(f"# a /{net.prefixlen} is 2^{128 - net.prefixlen} addresses; this is the RFC 7707")
+            print("# low-entropy subset (low/word IIDs, DHCP pools, EUI-64) -- not brute force.")
+        if args.out:
+            try:
+                with open(args.out, "w") as fh:
+                    for c in cands:
+                        fh.write(f"{c}\n")
+            except OSError as exc:
+                print(f"--out: {exc}", file=sys.stderr)
+                sys.exit(1)
+            print(f"# wrote {len(cands)} addresses to {args.out} -- feed zmap/masscan/scan6/ping")
         for c in cands:
             if args.probe:
                 live, _ = ping6(str(c), iface=args.iface, wait=args.wait)
@@ -180,6 +231,7 @@ def cmd_scan(args):
             else:
                 print(f"{str(c):<42} {classify(str(c))}")
         return
+
     iface = args.iface or detect_iface()
     if not iface:
         print("no link-local interface found - pass --iface", file=sys.stderr)
@@ -219,8 +271,12 @@ def build_parser() -> argparse.ArgumentParser:
                         help="target-generate likely-live addresses from a prefix "
                              "(e.g. 2001:db8:0:1::/64) instead of scanning the link")
     p_scan.add_argument("--mac", help="with --predict: also derive the EUI-64 SLAAC address")
+    p_scan.add_argument("--seed", metavar="FILE",
+                        help="ingest observed/hitlist IPv6 addresses (one per line) into the target set")
+    p_scan.add_argument("--out", metavar="FILE",
+                        help="write the candidate list (one address per line) for zmap/masscan/scan6")
     p_scan.add_argument("--probe", action="store_true",
-                        help="with --predict: actually ping each candidate")
+                        help="actually ping each candidate")
     p_scan.add_argument("--wait", type=int, default=1, help="per-probe timeout seconds (default 1)")
     p_scan.set_defaults(func=cmd_scan)
 

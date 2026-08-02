@@ -85,6 +85,11 @@ sixctl scan --predict 2001:db8:0:1::/64 --mac 00:11:22:33:44:55
                              #   target-generation: the ~30 addresses a scanner
                              #   actually tries (low/word IIDs, DHCP pools, EUI-64)
                              #   instead of brute-forcing 2^64. add --probe to ping them.
+sixctl scan --predict 2001:db8:0:1::/64 --out targets.txt
+                             #   emit the candidate list for ANY prober, e.g.:
+                             #   zmap --ipv6-source-ip=$SRC --ipv6-target-file=targets.txt -M icmp6_echoscan
+sixctl scan --seed hitlist.txt --out targets.txt
+                             #   ingest observed / IPv6-Hitlist addresses (union + dedupe)
 sixctl ra sniff|send          # TODO: sniff or send router advertisements (needs scapy)
 sixctl craft                 # TODO: interactive header-chain builder (needs scapy)
 ```
@@ -92,7 +97,11 @@ sixctl craft                 # TODO: interactive header-chain builder (needs sca
 `scan` needs only iproute2 + iputils `ping` (no scapy). The `--predict` mode is
 the point of the whole repo made executable: RFC 7707 says you don't brute-force
 a /64, you predict its low-entropy structure - this generates exactly those
-candidates. Its output lists real live hosts, so treat it as sensitive.
+candidates. **Generation and probing are decoupled**: `--out` writes a plain
+address list for zmap / masscan / scan6 / ping, and `--seed` folds in an observed
+or [IPv6-Hitlist](https://ipv6hitlist.github.io/) set. For richer generation
+algorithms, SI6's `scan6` is the reference tool. `scan` output lists real live
+hosts - treat it as sensitive.
 
 ## frag6
 
