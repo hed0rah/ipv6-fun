@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """sixctl - the ipv6-fun flagship CLI.
 
-recon (addrs, ndp) works today by shelling out to iproute2. the
-attack-capable subcommands (ra, scan, craft) need scapy and are stubbed
-until their own implementation pass - see demos/10-attack-lab/README.md
-for the reasoning.
+recon (addrs, ndp) and scan work today with only iproute2 + iputils ping
+(no scapy). scan does link enumeration (multicast + NDP cache) and prefix
+target-generation (RFC 7707 style). ra and craft need scapy and are stubbed
+until their own pass - see demos/10-attack-lab/README.md for the reasoning.
 """
 
 import argparse
+import ipaddress
 import re
 import subprocess
 import sys
@@ -72,6 +73,120 @@ def cmd_ndp(_args: argparse.Namespace) -> None:
         print(f"{addr:<40} type={classify(addr):<22} {' '.join(parts[1:])}")
 
 
+LOW_WORDS = [
+    "::1", "::2", "::3", "::a", "::10", "::20", "::53", "::80", "::443",
+    "::8080", "::1000", "::dead:beef", "::c0:ffee", "::cafe", "::babe",
+    "::f00d", "::bad:c0de", "::1:1",
+]
+
+
+def eui64_iid(mac):
+    """MAC -> the 64-bit SLAAC interface ID (flip the U/L bit, insert ff:fe)."""
+    octets = re.findall(r"[0-9a-fA-F]{2}", mac)
+    if len(octets) != 6:
+        return None
+    b = [int(x, 16) for x in octets]
+    b[0] ^= 0x02
+    iid = bytes([b[0], b[1], b[2], 0xFF, 0xFE, b[3], b[4], b[5]])
+    return int.from_bytes(iid, "big")
+
+
+def gen_candidates(net, mac):
+    """The addresses a real scanner predicts instead of brute-forcing 2^64."""
+    base = int(net.network_address)
+    out, seen = [], set()
+
+    def add(host_int):
+        addr = ipaddress.IPv6Address(base + host_int)
+        if addr in net and addr not in seen:
+            seen.add(addr)
+            out.append(addr)
+
+    for suf in LOW_WORDS:                     # low / memorable / service IIDs
+        add(int(ipaddress.IPv6Address(suf)))
+    for i in range(0x100, 0x10B):             # sequential DHCPv6-style pool
+        add(i)
+    if mac:                                   # the EUI-64 SLAAC leak
+        iid = eui64_iid(mac)
+        if iid is not None:
+            add(iid)
+    return out
+
+
+def ping6(addr, iface=None, wait=1):
+    """True if addr answers an ICMPv6 echo. Uses iputils ping (no scapy)."""
+    target = addr
+    if iface and (addr.startswith("fe80") or addr.startswith("ff0")):
+        target = f"{addr}%{iface}"
+    try:
+        r = subprocess.run(
+            ["ping", "-6", "-c", "1", "-W", str(wait), target],
+            capture_output=True, text=True,
+        )
+    except FileNotFoundError:
+        print("sixctl scan needs 'ping' (iputils) - Linux only", file=sys.stderr)
+        sys.exit(1)
+    return r.returncode == 0, r.stdout
+
+
+def detect_iface():
+    cur = None
+    for line in run_ip(["-6", "addr", "show"]).splitlines():
+        m = re.match(r"^\d+:\s+([^:@]+)", line)
+        if m:
+            cur = m.group(1)
+        elif "inet6 fe80:" in line and cur and cur != "lo":
+            return cur
+    return None
+
+
+def scan_link(iface):
+    print(f"# link sweep on {iface}: solicit ff02::1 (all-nodes), then read the NDP cache")
+    _, out = ping6("ff02::1", iface=iface, wait=2)
+    found = {}
+    for a in re.findall(r"bytes from ([0-9a-fA-F:]+)(?:%\w+)?:", out):
+        found.setdefault(a, "echo-reply")
+    for line in run_ip(["-6", "neigh", "show"]).splitlines():
+        p = line.split()
+        if p and ":" in p[0]:
+            found.setdefault(p[0], "ndp-cache")
+    if not found:
+        print("(no neighbors answered - try another --iface, or one on the target link)")
+        return
+    for a in sorted(found):
+        print(f"{a:<42} {classify(a):<22} via {found[a]}")
+
+
+def cmd_scan(args):
+    if args.predict:
+        try:
+            net = ipaddress.ip_network(args.predict, strict=False)
+        except ValueError as exc:
+            print(f"bad prefix: {exc}", file=sys.stderr)
+            sys.exit(1)
+        if net.version != 6:
+            print("scan --predict needs an IPv6 prefix", file=sys.stderr)
+            sys.exit(1)
+        cands = gen_candidates(net, args.mac)
+        span = 128 - net.prefixlen
+        print(f"# target-generation for {net}")
+        print(f"# brute force would be 2^{span} addresses; a real scanner predicts")
+        print(f"# these {len(cands)} patterns instead (RFC 7707: low/word IIDs, DHCP")
+        print("# pools, EUI-64). " + ("probing each..." if args.probe else "dry run; pass --probe to test them."))
+        for c in cands:
+            if args.probe:
+                live, _ = ping6(str(c), iface=args.iface, wait=args.wait)
+                print(f"{str(c):<42} {classify(str(c)):<22} {'LIVE' if live else '-'}")
+            else:
+                print(f"{str(c):<42} {classify(str(c))}")
+        return
+    iface = args.iface or detect_iface()
+    if not iface:
+        print("no link-local interface found - pass --iface", file=sys.stderr)
+        sys.exit(1)
+    scan_link(iface)
+
+
 def cmd_not_implemented(name: str):
     def handler(_args: argparse.Namespace) -> None:
         print(f"sixctl {name}: not yet implemented (needs scapy)", file=sys.stderr)
@@ -97,9 +212,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_ra.set_defaults(func=cmd_not_implemented("ra"))
 
     p_scan = sub.add_parser(
-        "scan", help="[TODO] multicast/NDP-based host enumeration"
+        "scan", help="enumerate the link (multicast+NDP) or target-generate from a prefix"
     )
-    p_scan.set_defaults(func=cmd_not_implemented("scan"))
+    p_scan.add_argument("--iface", help="interface for the link sweep / link-local probes")
+    p_scan.add_argument("--predict", metavar="PREFIX",
+                        help="target-generate likely-live addresses from a prefix "
+                             "(e.g. 2001:db8:0:1::/64) instead of scanning the link")
+    p_scan.add_argument("--mac", help="with --predict: also derive the EUI-64 SLAAC address")
+    p_scan.add_argument("--probe", action="store_true",
+                        help="with --predict: actually ping each candidate")
+    p_scan.add_argument("--wait", type=int, default=1, help="per-probe timeout seconds (default 1)")
+    p_scan.set_defaults(func=cmd_scan)
 
     p_craft = sub.add_parser("craft", help="[TODO] interactive header-chain builder")
     p_craft.set_defaults(func=cmd_not_implemented("craft"))

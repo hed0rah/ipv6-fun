@@ -80,10 +80,19 @@ sudo cp tools/sixctl/sixctl /usr/local/bin/sixctl
 
 sixctl addrs                 # list & classify addresses on all interfaces
 sixctl ndp                   # dump the neighbor cache with scope annotations
-sixctl ra sniff|send          # TODO: sniff or send router advertisements
-sixctl scan                  # TODO: multicast/NDP-based host enumeration
-sixctl craft                 # TODO: interactive header-chain builder
+sixctl scan --iface eth0     # enumerate the link: solicit ff02::1 + read the NDP cache
+sixctl scan --predict 2001:db8:0:1::/64 --mac 00:11:22:33:44:55
+                             #   target-generation: the ~30 addresses a scanner
+                             #   actually tries (low/word IIDs, DHCP pools, EUI-64)
+                             #   instead of brute-forcing 2^64. add --probe to ping them.
+sixctl ra sniff|send          # TODO: sniff or send router advertisements (needs scapy)
+sixctl craft                 # TODO: interactive header-chain builder (needs scapy)
 ```
+
+`scan` needs only iproute2 + iputils `ping` (no scapy). The `--predict` mode is
+the point of the whole repo made executable: RFC 7707 says you don't brute-force
+a /64, you predict its low-entropy structure - this generates exactly those
+candidates. Its output lists real live hosts, so treat it as sensitive.
 
 ## frag6
 
