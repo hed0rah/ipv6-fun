@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """sixctl - the ipv6-fun flagship CLI.
 
-recon (addrs, ndp) and scan work today with only iproute2 + iputils ping
+recon (addrs, ndp), explain (pure stdlib, offline), and scan work today with iproute2 + iputils ping
 (no scapy). scan does link enumeration (multicast + NDP cache) and prefix
 target-generation (RFC 7707 style). ra and craft need scapy and are stubbed
 until their own pass - see demos/10-attack-lab/README.md for the reasoning.
@@ -157,6 +157,80 @@ def scan_link(iface):
         print(f"{a:<42} {classify(a):<22} via {found[a]}")
 
 
+def solicited_node(addr):
+    """The ff02::1:ffXX:XXXX group this address listens to for NDP."""
+    return ipaddress.IPv6Address(int(ipaddress.IPv6Address("ff02::1:ff00:0")) | (int(addr) & 0xFFFFFF))
+
+
+def iid_to_mac(addr):
+    """If the interface ID is EUI-64 (ff:fe in the middle), recover the source MAC."""
+    b = addr.packed[8:16]
+    if b[3] == 0xFF and b[4] == 0xFE:
+        m = bytes([b[0] ^ 0x02, b[1], b[2], b[5], b[6], b[7]])
+        return ":".join(f"{x:02x}" for x in m)
+    return None
+
+
+def _iid_str(addr):
+    return ":".join(addr.exploded.split(":")[4:])
+
+
+def explain_addr(addr, net):
+    row = lambda k, v: print(f"{k:<15} {v}")
+    row("input", str(addr))
+    row("type", classify(str(addr)))
+    row("compressed", addr.compressed)
+    row("expanded", addr.exploded)
+    row("reverse DNS", addr.reverse_pointer)
+    row("solicited-node", str(solicited_node(addr)))
+    row("interface ID", _iid_str(addr))
+    mac = iid_to_mac(addr)
+    if mac:
+        row("EUI-64 -> MAC", f"{mac}   (SLAAC MAC-derived; U/L bit flipped back)")
+    if addr.ipv4_mapped:
+        row("IPv4-mapped", f"{addr.ipv4_mapped}   (::ffff:0:0/96)")
+    if addr.sixtofour:
+        row("6to4 IPv4", f"{addr.sixtofour}   (2002::/16)")
+    if addr.teredo:
+        row("Teredo", f"server {addr.teredo[0]}  client {addr.teredo[1]}")
+    if addr in ipaddress.ip_network("64:ff9b::/96"):
+        row("NAT64 IPv4", f"{ipaddress.IPv4Address(addr.packed[12:16])}   (64:ff9b::/96)")
+    if net is not None:
+        n = net.num_addresses
+        row("prefix", str(net))
+        row("  network", str(net.network_address))
+        extra = f"  ({n >> 64:,} x /64)" if net.prefixlen < 64 else ""
+        row("  size", f"2^{128 - net.prefixlen} = {n:,} addrs{extra}")
+        row("  range", f"{net.network_address} .. {net.broadcast_address}")
+
+
+def explain_mac(mac):
+    iid = eui64_iid(mac)
+    ll = ipaddress.IPv6Address(int(ipaddress.IPv6Address("fe80::")) | iid)
+    print(f"{'input MAC':<15} {mac}")
+    print(f"{'EUI-64 IID':<15} {_iid_str(ipaddress.IPv6Address(iid))}   (ff:fe inserted, U/L bit flipped)")
+    print(f"{'link-local':<15} {ll}   (fe80:: + IID -- the SLAAC address this MAC self-assigns)")
+    print(f"{'solicited-node':<15} {solicited_node(ll)}")
+    print("append that IID to any /64 to get its EUI-64 SLAAC address (guessable -- see 'scan --predict')")
+
+
+def cmd_explain(args):
+    t = args.target.strip()
+    if re.fullmatch(r"([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}", t):
+        explain_mac(t.replace("-", ":"))
+        return
+    try:
+        net = ipaddress.ip_network(t, strict=False) if "/" in t else None
+        addr = ipaddress.IPv6Address(t.split("/")[0])
+    except ValueError as exc:
+        print(f"not an IPv6 address / prefix / MAC: {t}  ({exc})", file=sys.stderr)
+        sys.exit(1)
+    if net is not None and net.version != 6:
+        print("that's an IPv4 prefix - this translates IPv6", file=sys.stderr)
+        sys.exit(1)
+    explain_addr(addr, net)
+
+
 def load_seed(path):
     """Read observed/hitlist IPv6 addresses (one per line, '#' comments, first token)."""
     addrs = []
@@ -258,6 +332,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_ndp = sub.add_parser("ndp", help="dump the neighbor (NDP) cache")
     p_ndp.set_defaults(func=cmd_ndp)
+
+    p_explain = sub.add_parser("explain", help="translate an IPv6 address / prefix / MAC to all its forms")
+    p_explain.add_argument("target", help="IPv6 addr (2001:db8::1), prefix (2001:db8::/48), or a MAC")
+    p_explain.set_defaults(func=cmd_explain)
 
     p_ra = sub.add_parser("ra", help="[TODO] sniff or send router advertisements")
     p_ra.add_argument("action", choices=["sniff", "send"])

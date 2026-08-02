@@ -80,6 +80,9 @@ sudo cp tools/sixctl/sixctl /usr/local/bin/sixctl
 
 sixctl addrs                 # list & classify addresses on all interfaces
 sixctl ndp                   # dump the neighbor cache with scope annotations
+sixctl explain 2001:db8::1   # rosetta for ONE address/prefix/MAC (offline, stdlib only):
+                             #   expanded + compressed, reverse-DNS (ip6.arpa), solicited-node,
+                             #   EUI-64 <-> MAC, embedded IPv4 (v4-mapped/6to4/NAT64), prefix math
 sixctl scan --iface eth0     # enumerate the link: solicit ff02::1 + read the NDP cache
 sixctl scan --predict 2001:db8:0:1::/64 --mac 00:11:22:33:44:55
                              #   target-generation: the ~30 addresses a scanner
