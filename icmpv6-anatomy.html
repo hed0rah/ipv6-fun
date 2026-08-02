@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ipv6-fun / header anatomy</title>
+<title>ipv6-fun / ICMPv6 &amp; Neighbor Discovery anatomy</title>
 <script>(function(){try{var m=localStorage.getItem("protofun-theme");if(!m)m=matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",m);}catch(e){}})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,7 +38,6 @@ protofun-toggle:hover{color:var(--enum)}
 .head .strip b{color:var(--ink);font-weight:500}
 .lede{color:var(--soft);max-width:74ch;margin-bottom:2.2rem;font-size:0.85rem;line-height:1.75}
 .lede b{color:var(--ink);font-weight:500}
-.lede a{color:var(--enum)}
 .intro{display:flex;gap:1.2rem;align-items:stretch;margin-bottom:1.4rem}
 .intro .lede{margin-bottom:0}
 .sig{flex:0 0 auto;align-self:stretch;display:flex;flex-direction:row;align-items:center;gap:0.9rem;padding-left:1.5rem;border-left:1px solid var(--hair)}
@@ -72,12 +71,6 @@ protofun-toggle:hover{color:var(--enum)}
 .panel.on{display:block}
 .pfacts{display:flex;flex-wrap:wrap;gap:0 1.8rem;font-size:0.64rem;letter-spacing:0.06em;color:var(--soft);text-transform:uppercase;margin-bottom:1.1rem;border-bottom:1px solid var(--hair);padding-bottom:0.7rem}
 .pfacts b{color:var(--enum);font-weight:500;margin-left:0.4rem;text-transform:none;letter-spacing:0.02em}
-
-.difftable{width:100%;border-collapse:collapse;font-size:0.76rem;margin:0.6rem 0 1.8rem}
-.difftable th,.difftable td{border:1px solid var(--hair);padding:0.5rem 0.75rem;text-align:left;vertical-align:top}
-.difftable th{background:var(--panel);color:var(--ink);font-weight:500;font-size:0.64rem;letter-spacing:0.08em;text-transform:uppercase}
-.difftable td:first-child{color:var(--soft);white-space:nowrap}
-.difftable td b{color:var(--ink);font-weight:500}
 
 .diagram{display:flex;flex-wrap:wrap;gap:12px;margin:0.6rem 0 1.4rem}
 .bytegrp{border:1px solid var(--line);background:var(--panel)}
@@ -129,11 +122,7 @@ protofun-toggle:hover{color:var(--enum)}
 .detail .dl .kind{color:var(--soft)}
 .detail h3{font-weight:500;font-size:0.98rem} .detail .dc{font-size:0.66rem;color:var(--enum);margin:0.25rem 0 0.7rem}
 .detail p{font-size:0.77rem;color:var(--soft);line-height:1.65;white-space:pre-wrap}
-.detail .dn{font-size:0.67rem;color:var(--ink);margin-top:0.7rem;line-height:1.55;border-top:1px solid var(--hair);padding-top:0.6rem;white-space:pre-wrap;font-family:var(--ff)}
-
-/* OSI stack sandwich - same field/detail idiom, hand-wired instead of build() */
-.osilist .field{grid-template-columns:1fr auto}
-.osilist .fn b{display:block;font-size:0.6rem;letter-spacing:0.14em;color:var(--faint);font-weight:400;text-transform:uppercase;margin-bottom:0.15rem}
+.detail .dn{font-size:0.67rem;color:var(--ink);margin-top:0.7rem;line-height:1.55;border-top:1px solid var(--hair);padding-top:0.6rem;white-space:pre-wrap}
 
 footer{margin-top:3.5rem;padding-top:0.9rem;border-top:1px solid var(--ink);display:flex;justify-content:space-between;font-size:0.58rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--faint);flex-wrap:wrap;gap:0.5rem}
 footer a{color:inherit;border-bottom:1px solid var(--hair)} footer a:hover{color:var(--enum);border-color:var(--enum)}
@@ -144,17 +133,17 @@ footer a{color:inherit;border-bottom:1px solid var(--hair)} footer a:hover{color
 
   <div class="head">
     <div class="row">
-      <div class="title"><div class="sysmark">IPV6-FUN . PACKET ANATOMY</div><h1>IPv6 Anatomy</h1></div>
-      <div class="stamp"><b>IPv4 (RFC 791) + IPv6 (RFC 8200)</b>byte by byte, field by field<br>rev 2026.08</div>
+      <div class="title"><div class="sysmark">IPV6-FUN . PACKET ANATOMY</div><h1>ICMPv6 &amp; Neighbor Discovery Anatomy</h1></div>
+      <div class="stamp"><b>RFC 4443 + RFC 4861</b>every NDP message, byte by byte<br>rev 2026.08</div>
     </div>
     <div class="strip">
-      <div>layer <b>L3 . network</b></div><div>v6 header <b>40B fixed</b></div>
-      <div>v4 header <b>20-60B</b></div><div>see also <b>deep-dive.md</b></div>
+      <div>header <b>4 bytes + body</b></div><div>ndp types <b>133-137</b></div>
+      <div>checksum <b>pseudo-header</b></div><div>see also <b>index.html</b></div>
     </div>
   </div>
 
   <div class="intro">
-  <p class="lede">Every packet on the internet opens with one of these two headers. <b>IPv4</b>'s 20-byte header has carried the internet since 1981; <b>IPv6</b>'s fixed 40-byte header, finalized in 2017, trades IPv4's variable-length options for a chain of separate extension headers and swaps a 32-bit address space for a 128-bit one. <b>Hover</b> a field to light its bytes, <b>click</b> a field marked <span class="k-en">+</span> for its lookup table. Full protocol writeup and citations: <a href="deep-dive.md">deep-dive.md</a>.</p>
+  <p class="lede">IPv6 has no ARP, no broadcast, and no separate ping protocol - ICMPv6 (<a href="https://www.rfc-editor.org/rfc/rfc4443">RFC 4443</a>) carries all of it, and Neighbor Discovery (<a href="https://www.rfc-editor.org/rfc/rfc4861">RFC 4861</a>) is just five specific ICMPv6 message types. Every example on this page shares one running scenario: a host at <code>fe80::21a:2bff:fe3c:4d5e</code> (MAC <code>00:1a:2b:3c:4d:5e</code>) resolving and being resolved by <code>2001:db8::1a2b:3c4d:5e6f</code> - the same host used on the <a href="index.html">IPv6 Anatomy</a> page. <b>Hover</b> a field to light its bytes, <b>click</b> a field marked <span class="k-en">+</span> for its lookup table.</p>
   <aside class="sig" aria-label="color key">
     <div class="legrows">
     <div class="row"><span class="sw dark k-enum">teal</span><span class="swsep">&#8594;</span><span class="sw light k-enum">value</span></div>
@@ -167,63 +156,67 @@ footer a{color:inherit;border-bottom:1px solid var(--hair)} footer a:hover{color
   </div>
 
   <div class="tabs" id="tabs">
-    <button class="tab on" data-p="overview">Overview<small>where it sits, the diff</small></button>
-    <button class="tab" data-p="ipv6">IPv6 Header<small>40 bytes, fixed</small></button>
-    <button class="tab" data-p="ipv4">IPv4 Header<small>20-60 bytes</small></button>
+    <button class="tab on" data-p="overview">Overview<small>generic header</small></button>
+    <button class="tab" data-p="rs">RS<small>type 133</small></button>
+    <button class="tab" data-p="ra">RA<small>type 134</small></button>
+    <button class="tab" data-p="ns">NS<small>type 135</small></button>
+    <button class="tab" data-p="na">NA<small>type 136</small></button>
+    <button class="tab" data-p="redirect">Redirect<small>type 137</small></button>
   </div>
   <div class="panelwrap">
 
     <div class="panel on" data-panel="overview">
-      <div class="sec">where this sits</div>
-      <p class="note">The IP header is layer 3 - it hands off to a transport header above and rides inside a link-layer frame below. Hover a row for the layer's own byte layout and a code snippet.</p>
-      <div class="block">
-        <div class="left">
-          <div class="fields osilist" id="osi-list">
-            <div class="field" data-osi="l4"><span class="fn"><b>L4 . transport</b>TCP / UDP / ICMPv6</span><span class="fv k-enum">above</span></div>
-            <div class="field cued" data-osi="l3"><span class="fn"><b>L3 . network</b>IPv4 / IPv6 - this page</span><span class="fv k-sync">here</span></div>
-            <div class="field" data-osi="l2"><span class="fn"><b>L2 . data link</b>Ethernet frame</span><span class="fv k-flag">below</span></div>
-          </div>
-        </div>
-        <div class="detailcol"><aside class="detail" id="osi-detail">
-          <div class="dl"><span>layer detail</span><span class="kind"></span></div>
-          <h3></h3><div class="dc"></div><p></p><div class="dn"></div>
-        </aside></div>
-      </div>
-
-      <div class="sec">the diff, at a glance</div>
-      <table class="difftable">
-        <tr><th></th><th>IPv4</th><th>IPv6</th></tr>
-        <tr><td>Header size</td><td>20-60 bytes, variable (options)</td><td><b>40 bytes, fixed</b> - extensions are separate chained headers</td></tr>
-        <tr><td>Address length</td><td>32 bits</td><td><b>128 bits</b></td></tr>
-        <tr><td>Header checksum</td><td>yes - recomputed every hop</td><td><b>none</b> - integrity pushed to upper layers</td></tr>
-        <tr><td>Fragmentation</td><td>routers may fragment in flight</td><td><b>source only</b>, via a Fragment extension header</td></tr>
-        <tr><td>"next protocol" field</td><td>Protocol (byte 9)</td><td>Next Header (byte 6) - <b>same IANA registry</b>, same numbers</td></tr>
-        <tr><td>Broadcast</td><td>yes</td><td><b>none</b> - multicast only</td></tr>
-        <tr><td>Address autoconfig</td><td>DHCP (or static)</td><td>SLAAC or DHCPv6</td></tr>
-        <tr><td>Defining spec</td><td>RFC 791 (1981)</td><td>RFC 8200 (2017)</td></tr>
-      </table>
-      <div class="callout"><b>why the source is documentation-safe.</b> The example addresses on this page use the reserved documentation ranges - <code>2001:db8::/32</code> for IPv6 (RFC 3849) and <code>192.0.2.0/24</code> / <code>203.0.113.0/24</code> for IPv4 (RFC 5737) - so nothing here is a real routable host.</div>
+      <div class="pfacts"><span>header<b>type+code+checksum, 4 bytes</b></span><span>spec<b>RFC 4443</b></span></div>
+      <p class="plede" style="color:var(--soft);max-width:76ch;font-size:0.82rem;line-height:1.75;margin-bottom:0.3rem">Every ICMPv6 message opens with the same 4 bytes; everything after that is message-specific. The type field alone tells a receiver which of the five NDP messages (or which error/informational message) follows.</p>
+      <div class="sec">generic header (4 bytes)</div>
+      <p class="note">Example: Time Exceeded, hop limit reached in transit. Checksum shown as a placeholder here since a real one needs a full body - see the message-specific tabs for worked checksums over a complete message.</p>
+      <div id="block-overview" data-build></div>
+      <div class="callout"><b>same host, every tab.</b> fe80::21a:2bff:fe3c:4d5e / 00:1a:2b:3c:4d:5e is the same EUI-64 worked example used throughout; 2001:db8::1a2b:3c4d:5e6f is the same target used on the IPv6 Anatomy page. Every checksum on this page is computed for real, not illustrative placeholder math.</div>
     </div>
 
-    <div class="panel" data-panel="ipv6">
-      <div class="pfacts"><span>size<b>40 bytes, fixed</b></span><span>addr<b>128-bit</b></span><span>spec<b>RFC 8200</b></span></div>
-      <p class="note">First word (version, traffic class, flow label) is bit-packed, so it's drawn bit by bit. Everything after it is byte-aligned - payload length, next header, hop limit, then the two 128-bit addresses drawn byte by byte.</p>
-      <div id="ipv6-word0" data-build></div>
-      <div id="ipv6-rest" data-build></div>
+    <div class="panel" data-panel="rs">
+      <div class="pfacts"><span>type<b>133</b></span><span>sent to<b>ff02::2 (all-routers)</b></span><span>size<b>16 bytes</b></span></div>
+      <p class="plede" style="color:var(--soft);max-width:76ch;font-size:0.82rem;line-height:1.75;margin-bottom:0.3rem">"Any routers out there?" - lets a host get an immediate RA on boot instead of waiting out the periodic interval, which can be minutes.</p>
+      <div class="sec">Router Solicitation (16 bytes)</div>
+      <p class="note">Sent from fe80::21a:2bff:fe3c:4d5e to ff02::2, with a Source Link-Layer Address option so the router doesn't need its own NS to reply.</p>
+      <div id="block-rs" data-build></div>
     </div>
 
-    <div class="panel" data-panel="ipv4">
-      <div class="pfacts"><span>size<b>20-60 bytes</b></span><span>addr<b>32-bit</b></span><span>spec<b>RFC 791</b></span></div>
-      <p class="note">Version+IHL+DSCP+ECN pack into the first 2 bytes, so they're drawn bit by bit; Total Length and Identification are byte-aligned; Flags+Fragment Offset pack into 2 more bits; TTL, Protocol, Checksum, and both addresses are byte-aligned.</p>
-      <div id="ipv4-word0" data-build></div>
-      <div id="ipv4-lengths" data-build></div>
-      <div id="ipv4-flags" data-build></div>
-      <div id="ipv4-rest" data-build></div>
+    <div class="panel" data-panel="ra">
+      <div class="pfacts"><span>type<b>134</b></span><span>sent to<b>ff02::1 or unicast</b></span><span>size<b>48 bytes</b></span></div>
+      <p class="plede" style="color:var(--soft);max-width:76ch;font-size:0.82rem;line-height:1.75;margin-bottom:0.3rem">Carries the prefix (via a Prefix Information Option), the M/O/H flags, a router preference, and lifetimes. This is what turns into a SLAAC address on the receiving host.</p>
+      <div class="sec">Router Advertisement + Prefix Information Option (48 bytes)</div>
+      <p class="note">Example: from fe80::1, advertising 2001:db8::/64, stateless-DHCPv6 (O=1), High preference, 30-minute router lifetime.</p>
+      <div id="block-ra" data-build></div>
+    </div>
+
+    <div class="panel" data-panel="ns">
+      <div class="pfacts"><span>type<b>135</b></span><span>sent to<b>solicited-node multicast</b></span><span>size<b>32 bytes</b></span></div>
+      <p class="plede" style="color:var(--soft);max-width:76ch;font-size:0.82rem;line-height:1.75;margin-bottom:0.3rem">"Who has this address?" - the direct ARP-replacement message. Sourced from :: instead of a real address, this exact same message doubles as the Duplicate Address Detection probe.</p>
+      <div class="sec">Neighbor Solicitation (32 bytes)</div>
+      <p class="note">Resolving 2001:db8::1a2b:3c4d:5e6f - sent to its solicited-node multicast ff02::1:ff4d:5e6f, derived from the target's low 24 bits.</p>
+      <div id="block-ns" data-build></div>
+    </div>
+
+    <div class="panel" data-panel="na">
+      <div class="pfacts"><span>type<b>136</b></span><span>sent<b>unicast reply, or multicast gratuitous</b></span><span>size<b>32 bytes</b></span></div>
+      <p class="plede" style="color:var(--soft);max-width:76ch;font-size:0.82rem;line-height:1.75;margin-bottom:0.3rem">The reply to an NS - or, sent unsolicited ("gratuitous"), a way to update caches proactively. The Override flag is the exact primitive NDP spoofing abuses.</p>
+      <div class="sec">Neighbor Advertisement (32 bytes)</div>
+      <p class="note">2001:db8::1a2b:3c4d:5e6f answering the NS above, unicast back to the solicitor, Override set.</p>
+      <div id="block-na" data-build></div>
+    </div>
+
+    <div class="panel" data-panel="redirect">
+      <div class="pfacts"><span>type<b>137</b></span><span>sent<b>unicast, router to host</b></span><span>size<b>40 bytes</b></span></div>
+      <p class="plede" style="color:var(--soft);max-width:76ch;font-size:0.82rem;line-height:1.75;margin-bottom:0.3rem">"Use this other router instead" - the current router telling a host that some other on-link router is a better next-hop for one specific destination.</p>
+      <div class="sec">Redirect (40 bytes, no options)</div>
+      <p class="note">The router at fe80::1 redirects our host toward fe80::99 for reaching 2001:db8::1a2b:3c4d:5e6f.</p>
+      <div id="block-redirect" data-build></div>
     </div>
 
   </div>
 
-  <footer><span>ipv6-fun / header anatomy</span><span><a href="icmpv6-anatomy.html">ICMPv6 &amp; Neighbor Discovery</a> &middot; <a href="extension-headers-anatomy.html">Extension Headers</a> &middot; <a href="deep-dive.md">deep-dive.md</a> &middot; <a href="cheatsheet.md">cheatsheet.md</a></span><span><a href="https://hed0rah.github.io/protocols-fun/">protocols-fun</a> &middot; <a href="https://github.com/hed0rah/ipv6-fun">github</a></span></footer>
+  <footer><span>ipv6-fun / ICMPv6 anatomy</span><span><a href="index.html">IPv6 Anatomy</a> &middot; <a href="extension-headers-anatomy.html">Extension Headers</a> &middot; <a href="deep-dive.md">deep-dive.md</a></span><span><a href="https://hed0rah.github.io/protocols-fun/">protocols-fun</a> &middot; <a href="https://github.com/hed0rah/ipv6-fun">github</a></span></footer>
 </div>
 
 <protofun-toggle aria-label="Toggle light and dark theme"></protofun-toggle>
@@ -319,107 +312,112 @@ footer a{color:inherit;border-bottom:1px solid var(--hair)} footer a:hover{color
     dcol.style.minHeight=(maxH+6)+"px";
   }
 
-  var DSCP_BRANCH=[["0","Default / Best Effort"],["8","CS1"],["10","AF11"],["18","AF21"],["26","AF31"],["34","AF41"],["46","EF (voice, low latency)"],["48","CS6 (routing control)"],["56","CS7 (network control)"]];
-  var ECN_BRANCH=[["00","Not-ECT (no ECN support)"],["01","ECT(1)"],["10","ECT(0)"],["11","CE (congestion experienced)"]];
+  var ICMP6_TYPES=[["1","Destination Unreachable"],["2","Packet Too Big"],["3","Time Exceeded"],["4","Parameter Problem"],
+    ["128","Echo Request"],["129","Echo Reply"],["130","MLD Query"],["131","MLD Report v1"],["132","MLD Done"],
+    ["133","Router Solicitation"],["134","Router Advertisement"],["135","Neighbor Solicitation"],
+    ["136","Neighbor Advertisement"],["137","Redirect"],["143","MLD Report v2"]];
 
   var SPECS={
-    "ipv6-word0":["bit",
-      [0x6B,0x80,0xCA,0xFE],
+    "block-overview":["byte",
+      [0x03,0x00,0x00,0x00],
       [
-        {label:"version",k:"sync",r:[0,3],val:"6",
-          body:"Fixed at 6. The very first nibble on the wire is how a receiver tells an IPv6 packet from an IPv4 one before parsing anything else.",
-          note:"IPv4's first nibble is 4 in the exact same bit position - a dual-stack parser only needs to read 4 bits to route the rest of decoding."},
-        {label:"DSCP",k:"enum",r:[4,9],val:"46 (EF)",sel:6,branch:DSCP_BRANCH,
-          body:"Differentiated Services Code Point - 6 bits of QoS marking, defined by RFC 2474. 46 (EF, Expedited Forwarding) is the classic low-latency marking used for VoIP.",
-          note:"DSCP + ECN together are what IPv6 calls the Traffic Class byte and IPv4 calls DSCP/ECN too - identical semantics, same RFC 2474/3168, in both headers."},
-        {label:"ECN",k:"flag",r:[10,11],val:"00 (Not-ECT)",sel:0,branch:ECN_BRANCH,
-          body:"Explicit Congestion Notification (RFC 3168). A router can mark CE instead of dropping a packet under load, if both endpoints negotiated ECN support.",
-          note:"a lone router flipping this bit is how ECN signals congestion without ever touching a payload."},
-        {label:"flow label",k:"enum",r:[12,31],val:"0xCAFE (51966)",
-          body:"20 bits meant to let routers hash and load-balance a flow without inspecting the transport header (RFC 6437). Set once at flow start, ideally left unchanged for the flow's life.",
-          note:"in practice most stacks leave this at 0, or fill it with a hash of the 5-tuple - full flow-label-aware routing never saw wide deployment."}
+        {label:"type",k:"enum",r:[0,0],val:"Time Exceeded (3)",sel:2,branch:ICMP6_TYPES,
+          body:"Identifies which ICMPv6 message this is. The five Neighbor Discovery types (133-137) live in exactly this same field.",
+          note:"133-137 all share this one shape for their first 4 bytes."},
+        {label:"code",k:"enum",r:[1,1],val:"0 (hop limit exceeded in transit)",
+          body:"Meaning depends on type. For Time Exceeded: 0=hop limit exceeded in transit, 1=fragment reassembly time exceeded. For most NDP messages code is always 0."},
+        {label:"checksum",k:"sync",r:[2,3],val:"placeholder",
+          body:"One's-complement checksum over a pseudo-header (source, destination, upper-layer length, next header=58) plus the full message body.",
+          note:"shown as 0x0000 here since this tab has no body to checksum - every other tab on this page computes a real one."}
       ]],
-    "ipv6-rest":["byte",
-      [0x00,0x20,0x3A,0x40,
+    "block-rs":["byte",
+      [0x85,0x00,0x89,0xC5,0x00,0x00,0x00,0x00,0x01,0x01,0x00,0x1A,0x2B,0x3C,0x4D,0x5E],
+      [
+        {label:"type",k:"enum",r:[0,0],val:"Router Solicitation (133)"},
+        {label:"code",k:"enum",r:[1,1],val:"0"},
+        {label:"checksum",k:"enum",r:[2,3],val:"0x89C5",
+          body:"Computed over the pseudo-header (src=fe80::21a:2bff:fe3c:4d5e, dst=ff02::2, next-header=58) plus these 16 bytes."},
+        {label:"reserved",k:"rsv",r:[4,7],val:"0x00000000",body:"Must be zero, ignored on receipt."},
+        {label:"opt type",k:"enum",r:[8,8],val:"Source Link-Layer Address (1)",sel:0,branch:[
+          ["1","Source Link-Layer Address"],["2","Target Link-Layer Address"],["3","Prefix Information"],
+          ["5","MTU"],["24","Route Information"],["25","RDNSS"]],
+          body:"NDP options share one TLV shape across every NDP message type - this registry is shared by RS/RA/NS/NA/Redirect."},
+        {label:"opt len",k:"enum",r:[9,9],val:"1 (8 bytes)",body:"Option length in 8-byte units, including the type+len bytes themselves."},
+        {label:"opt MAC",k:"sync",r:[10,15],val:"00:1a:2b:3c:4d:5e",body:"Our own MAC - lets the router reply with a unicast RA without needing its own NS first."}
+      ]],
+    "block-ra":["byte",
+      [0x86,0x00,0xFB,0x90,0x40,0x48,0x07,0x08,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+       0x03,0x04,0x40,0xC0,0x00,0x27,0x8D,0x00,0x00,0x09,0x3A,0x80,0x00,0x00,0x00,0x00,
+       0x20,0x01,0x0D,0xB8,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00],
+      [
+        {label:"type",k:"enum",r:[0,0],val:"Router Advertisement (134)"},
+        {label:"code",k:"enum",r:[1,1],val:"0"},
+        {label:"checksum",k:"enum",r:[2,3],val:"0xFB90",
+          body:"Computed over the pseudo-header (src=fe80::1, dst=ff02::1, next-header=58) plus all 48 bytes of this message."},
+        {label:"cur hop limit",k:"enum",r:[4,4],val:"64",body:"Suggested Hop Limit for hosts on this link to use for their own outgoing traffic."},
+        {label:"flags",k:"flag",r:[5,5],val:"M=0 O=1 H=0 Prf=High",sel:0,branch:[
+          ["0x48","M=0 O=1 H=0 Prf=01 (High) Res=000"]],
+          body:"M: use DHCPv6 for the address. O: use DHCPv6 for other config (DNS etc) - set here, meaning stateless DHCPv6. H: this router also does mobile-IPv6 home-agent duty. Prf: 2-bit router preference, RFC 4191.",
+          note:"byte = M<<7 | O<<6 | H<<5 | Prf<<3 | Reserved = 0x48"},
+        {label:"router lifetime",k:"enum",r:[6,7],val:"1800s (30 min)",body:"How long this router should be used as a default router. 0 means \"don't use me as a default router,\" but I can still be on-link."},
+        {label:"reachable time",k:"enum",r:[8,11],val:"0 (unspecified)",body:"How long a neighbor is considered REACHABLE after confirmation, in ms. 0 means \"don't override the host's own value.\""},
+        {label:"retrans timer",k:"enum",r:[12,15],val:"0 (unspecified)",body:"Interval between retransmitted Neighbor Solicitations, in ms. 0 means \"don't override.\""},
+        {label:"PIO type",k:"enum",r:[16,16],val:"Prefix Information (3)"},
+        {label:"PIO len",k:"enum",r:[17,17],val:"4 (32 bytes)"},
+        {label:"prefix length",k:"enum",r:[18,18],val:"64",body:"How many bits of the prefix field below are significant."},
+        {label:"L/A flags",k:"flag",r:[19,19],val:"L=1 A=1",sel:0,branch:[["0xC0","L=1 (on-link) A=1 (autonomous/SLAAC) Reserved1=0"]],
+          body:"L: this prefix is on-link, no router needed to reach it. A: use this prefix for SLAAC address generation. Independent bits on purpose."},
+        {label:"valid lifetime",k:"enum",r:[20,23],val:"2592000s (30 days)",body:"How long an address formed from this prefix stays valid at all."},
+        {label:"preferred lifetime",k:"enum",r:[24,27],val:"604800s (7 days)",body:"How long the address stays preferred before deprecating (still valid, but no longer chosen for new connections)."},
+        {label:"reserved2",k:"rsv",r:[28,31],val:"0x00000000"},
+        {label:"prefix",k:"sync",r:[32,47],val:"2001:db8::/64",body:"The advertised prefix, always written as a full 128-bit field regardless of prefix length - only the high 64 bits are significant here."}
+      ]],
+    "block-ns":["byte",
+      [0x87,0x00,0x47,0x58,0x00,0x00,0x00,0x00,
        0x20,0x01,0x0D,0xB8,0x00,0x00,0x00,0x00,0x00,0x00,0x1A,0x2B,0x3C,0x4D,0x5E,0x6F,
-       0x20,0x01,0x0D,0xB8,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01],
+       0x01,0x01,0x00,0x1A,0x2B,0x3C,0x4D,0x5E],
       [
-        {label:"payload length",k:"enum",r:[0,1],val:"32 bytes",
-          body:"Length of everything AFTER this 40-byte fixed header - extension headers plus upper-layer data. Unlike IPv4's Total Length, this never includes the header itself.",
-          note:"0x0000 is a real value here too, but it means something specific: a jumbogram, whose true length lives in a Hop-by-Hop Jumbo Payload option (RFC 2675) instead."},
-        {label:"next header",k:"enum",r:[2,2],val:"ICMPv6 (58)",sel:7,branch:[
-            ["0","Hop-by-Hop Options"],["6","TCP"],["17","UDP"],["43","Routing"],["44","Fragment"],
-            ["50","ESP"],["51","AH"],["58","ICMPv6"],["59","No Next Header"],["60","Destination Options"]],
-          body:"What comes right after this header - either an extension header or the upper-layer protocol. Walks the same chain IPv4 calls Protocol.",
-          note:"same IANA \"Protocol Numbers\" registry as IPv4's Protocol field - TCP is 6 and UDP is 17 in both headers, no re-mapping needed."},
-        {label:"hop limit",k:"enum",r:[3,3],val:"64",
-          body:"Decremented by 1 at every router; the packet is dropped and an ICMPv6 Time Exceeded (type 3) is sent back when it hits 0. Direct functional twin of IPv4's TTL.",
-          note:"64 and 128 are the two common OS defaults (Linux/macOS vs Windows) - traceroute output leaks which OS sent a reply by working backward from the observed hop count."},
-        {label:"source address",k:"sync",r:[4,19],val:"2001:db8::1a2b:3c4d:5e6f",
-          body:"128 bits, no exceptions - even a link-local-only packet carries a full address here.",
-          note:"2001:db8::/32 is the RFC 3849 documentation prefix - guaranteed to never be routed on the real internet, the IPv6 analogue of IPv4's 192.0.2.0/24."},
-        {label:"destination address",k:"sync",r:[20,35],val:"2001:db8::1",
-          body:"Same 128-bit format as the source. Can be unicast, multicast, or (rarely, and only as a source) the unspecified address ::.",
-          note:"a multicast destination here is exactly how Neighbor Solicitation avoids ever needing a broadcast - see the ICMPv6 &amp; Neighbor Discovery page."}
+        {label:"type",k:"enum",r:[0,0],val:"Neighbor Solicitation (135)"},
+        {label:"code",k:"enum",r:[1,1],val:"0"},
+        {label:"checksum",k:"enum",r:[2,3],val:"0x4758",
+          body:"Computed over the pseudo-header (src=fe80::21a:2bff:fe3c:4d5e, dst=ff02::1:ff4d:5e6f, next-header=58) plus these 32 bytes."},
+        {label:"reserved",k:"rsv",r:[4,7],val:"0x00000000"},
+        {label:"target address",k:"sync",r:[8,23],val:"2001:db8::1a2b:3c4d:5e6f",
+          body:"The address whose link-layer address we're asking for. Also what a Duplicate Address Detection probe sets this to - for its own tentative address, sourced from :: instead of a real one."},
+        {label:"opt type",k:"enum",r:[24,24],val:"Source Link-Layer Address (1)"},
+        {label:"opt len",k:"enum",r:[25,25],val:"1 (8 bytes)"},
+        {label:"opt MAC",k:"sync",r:[26,31],val:"00:1a:2b:3c:4d:5e"}
       ]],
-    "ipv4-word0":["bit",
-      [0x45,0x00],
+    "block-na":["byte",
+      [0x88,0x00,0x5F,0x78,0x60,0x00,0x00,0x00,
+       0x20,0x01,0x0D,0xB8,0x00,0x00,0x00,0x00,0x00,0x00,0x1A,0x2B,0x3C,0x4D,0x5E,0x6F,
+       0x02,0x01,0x00,0x1A,0x2B,0x3C,0x4D,0x5E],
       [
-        {label:"version",k:"sync",r:[0,3],val:"4",
-          body:"Fixed at 4. Same field, same bit position as IPv6's version nibble - a dual-stack receiver checks exactly this nibble first.",
-          note:"the classic first byte of a plain IPv4 packet, 0x45, is version 4 + IHL 5 packed into one byte - one of the most-seen bytes on the internet."},
-        {label:"IHL",k:"enum",r:[4,7],val:"5 (20 bytes)",
-          body:"Internet Header Length, in 32-bit words. 5 means 20 bytes - no options. IPv6 has no equivalent field: its header is always exactly 40 bytes, full stop.",
-          note:"IHL can go up to 15 (60 bytes) when options are present - real-world options are rare enough that middleboxes routinely mishandle them."},
-        {label:"DSCP",k:"enum",r:[8,13],val:"0 (Default)",sel:0,branch:DSCP_BRANCH,
-          body:"Identical semantics and identical bit width to IPv6's DSCP field - this byte was originally IPv4's Type of Service, redefined by RFC 2474 to match.",
-          note:"set to Default/Best-Effort here, unlike the IPv6 example's EF marking - flip to the IPv6 tab to compare."},
-        {label:"ECN",k:"flag",r:[14,15],val:"00 (Not-ECT)",sel:0,branch:ECN_BRANCH,
-          body:"Same Explicit Congestion Notification mechanism as IPv6 (RFC 3168) - this is genuinely one field IPv4 and IPv6 share byte-for-byte, bit-for-bit."}
+        {label:"type",k:"enum",r:[0,0],val:"Neighbor Advertisement (136)"},
+        {label:"code",k:"enum",r:[1,1],val:"0"},
+        {label:"checksum",k:"enum",r:[2,3],val:"0x5F78",
+          body:"Computed over the pseudo-header (src=2001:db8::1a2b:3c4d:5e6f, dst=fe80::21a:2bff:fe3c:4d5e, next-header=58) plus these 32 bytes."},
+        {label:"flags",k:"flag",r:[4,4],val:"R=0 S=1 O=1",sel:0,branch:[["0x60","R=0 S=1 O=1 Reserved=00000"]],
+          body:"R: sender is a router. S: this is a solicited reply (vs. gratuitous/unsolicited). O: override any existing cache entry even if one exists - the exact primitive NDP spoofing abuses when sent unsolicited with a lying target."},
+        {label:"reserved",k:"rsv",r:[5,7],val:"0x000000"},
+        {label:"target address",k:"sync",r:[8,23],val:"2001:db8::1a2b:3c4d:5e6f",body:"Confirms which address this advertisement is answering for."},
+        {label:"opt type",k:"enum",r:[24,24],val:"Target Link-Layer Address (2)",sel:0,branch:[["1","Source Link-Layer Address (used in NS, RS)"],["2","Target Link-Layer Address (used in NA, Redirect)"]],
+          body:"NA and Redirect use option type 2 for the same MAC-carrying purpose NS/RS use type 1 for."},
+        {label:"opt len",k:"enum",r:[25,25],val:"1 (8 bytes)"},
+        {label:"opt MAC",k:"sync",r:[26,31],val:"00:1a:2b:3c:4d:5e"}
       ]],
-    "ipv4-lengths":["byte",
-      [0x00,0x3C, 0x12,0x34],
+    "block-redirect":["byte",
+      [0x89,0x00,0x1E,0x2B,0x00,0x00,0x00,0x00,
+       0xFE,0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x99,
+       0x20,0x01,0x0D,0xB8,0x00,0x00,0x00,0x00,0x00,0x00,0x1A,0x2B,0x3C,0x4D,0x5E,0x6F],
       [
-        {label:"total length",k:"enum",r:[0,1],val:"60 bytes",
-          body:"Entire packet length including this header, in bytes - the one meaningful difference from IPv6's Payload Length, which excludes its own header.",
-          note:"max value 65535 is IPv4's real-world MTU ceiling absent jumbograms; this is part of why IPv6 needed a Jumbo Payload option to go bigger."},
-        {label:"identification",k:"enum",r:[2,3],val:"0x1234",
-          body:"Tags all fragments of one original datagram so the destination can group them back together. Combined with source+destination+protocol to form the reassembly key.",
-          note:"IPv6 keeps an Identification field too, but only inside the separate Fragment extension header - it doesn't exist at all in an unfragmented IPv6 packet."}
-      ]],
-    "ipv4-flags":["bit",
-      [0x40,0x00],
-      [
-        {label:"reserved",k:"rsv",r:[0,0],val:"0",
-          body:"Must be zero (RFC 791). Sometimes called the \"evil bit\" as an April Fools' joke in RFC 3514 - not a real security mechanism, but a genuinely published RFC."},
-        {label:"DF",k:"flag",r:[1,1],val:"1 (Don't Fragment)",sel:1,branch:[["0","may fragment"],["1","don't fragment - drop + ICMP if too big"]],
-          body:"When set, a router that can't forward the packet whole must drop it and send ICMP Fragmentation Needed (type 3, code 4) instead of splitting it - this is what drives IPv4 Path MTU Discovery.",
-          note:"nearly every modern stack sets DF by default; the once-common in-flight IPv4 fragmentation this bit prevents is rare in practice now."},
-        {label:"MF",k:"flag",r:[2,2],val:"0 (last fragment)",sel:0,branch:[["0","last fragment"],["1","more fragments follow"]],
-          body:"Set on every fragment except the last one. A reassembler knows it has everything once it has fragment offset 0 through an MF=0 fragment with no gaps."},
-        {label:"fragment offset",k:"enum",r:[3,15],val:"0",
-          body:"Position of this fragment's data within the original datagram, in 8-byte units (13 bits, so max offset covers a 65536-byte reassembled packet).",
-          note:"IPv6 moves this exact field, bit for bit, into the separate Fragment extension header - see the Extension Headers page."}
-      ]],
-    "ipv4-rest":["byte",
-      [0x40,0x01, 0x2A,0x7D, 0xC0,0x00,0x02,0x0A, 0xCB,0x00,0x71,0x05],
-      [
-        {label:"TTL",k:"enum",r:[0,0],val:"64",
-          body:"Time To Live - decremented at every router, packet dropped and ICMP Time Exceeded sent when it hits 0. IPv6 renamed this Hop Limit but kept the exact behavior.",
-          note:"despite the name, this was never a real \"time\" even in the original 1981 spec - it was a hop count from day one."},
-        {label:"protocol",k:"enum",r:[1,1],val:"ICMP (1)",sel:0,branch:[
-            ["1","ICMP"],["6","TCP"],["17","UDP"],["41","IPv6 encapsulation (6in4)"],
-            ["50","ESP"],["51","AH"],["58","ICMPv6 (carried over v4)"],["89","OSPF"]],
-          body:"What upper-layer protocol follows this header - the direct predecessor of IPv6's Next Header field, drawing from the exact same IANA registry.",
-          note:"protocol 41 (6in4) is literally \"the payload is an entire IPv6 packet\" - one of the transition mechanisms covered in the ipv6-fun course material."},
-        {label:"header checksum",k:"enum",r:[2,3],val:"0x2A7D",
-          body:"One's-complement checksum over this header ONLY (not the payload). Must be recomputed at every hop that changes TTL - real per-hop cost IPv6 designers removed entirely by dropping this field.",
-          note:"sum = 0\nfor each 16-bit header word (checksum field zeroed):\n    sum += word\nwhile sum > 0xFFFF:\n    sum = (sum & 0xFFFF) + (sum >> 16)\nchecksum = ~sum & 0xFFFF\n\ncomputed live for this example's 20 header bytes -> 0x2A7D."},
-        {label:"source address",k:"sync",r:[4,7],val:"192.0.2.10",
-          body:"32 bits, four dotted-decimal octets. No structural equivalent of IPv6's interface-ID/EUI-64 story - IPv4 addresses are just assigned, statically or via DHCP.",
-          note:"192.0.2.0/24 is one of three RFC 5737 documentation ranges (with 198.51.100.0/24 and 203.0.113.0/24) - IPv4's answer to IPv6's 2001:db8::/32."},
-        {label:"destination address",k:"sync",r:[8,11],val:"203.0.113.5",
-          body:"Same 32-bit format as the source. No IPv4 address is ever 128 bits - that jump is IPv6's single biggest structural change."}
+        {label:"type",k:"enum",r:[0,0],val:"Redirect (137)"},
+        {label:"code",k:"enum",r:[1,1],val:"0"},
+        {label:"checksum",k:"enum",r:[2,3],val:"0x1E2B",
+          body:"Computed over the pseudo-header (src=fe80::1, dst=fe80::21a:2bff:fe3c:4d5e, next-header=58) plus these 40 bytes."},
+        {label:"reserved",k:"rsv",r:[4,7],val:"0x00000000"},
+        {label:"target address",k:"sync",r:[8,23],val:"fe80::99",body:"The better next-hop - usually another router on the same link as the one sending this Redirect."},
+        {label:"destination address",k:"sync",r:[24,39],val:"2001:db8::1a2b:3c4d:5e6f",body:"The original destination the host was trying to reach when it used the wrong router."}
       ]]
   };
 
@@ -445,46 +443,6 @@ footer a{color:inherit;border-bottom:1px solid var(--hair)} footer a:hover{color
   var initial=(location.hash||"").replace("#","");
   if(initial && document.querySelector('[data-panel="'+initial+'"]')) activate(initial);
   else buildPanel("overview");
-
-  // OSI sandwich - same hover idiom, hand-wired (not byte data, so no build()).
-  // Pre-measure every state's rendered height up front (mirroring build()'s
-  // maxH pattern) so .detail's overflow-y:auto never actually has to scroll -
-  // the L3 body text alone is taller than the 3-row field list.
-  var OSI={
-    l4:{label:"L4 - Transport",kind:"enum",val:"TCP / UDP / ICMPv6",
-      body:"Carries port numbers and per-protocol semantics. UDP is an 8-byte header with no state at all; TCP is 20 bytes minimum and adds sequence numbers, acknowledgments, window size, and flags for reliable, ordered delivery. ICMPv6 rides in the Next Header chain like a transport protocol but has no ports of its own.",
-      note:"struct udphdr {\n  uint16_t source;\n  uint16_t dest;\n  uint16_t len;\n  uint16_t check;\n};"},
-    l3:{label:"L3 - Network",kind:"sync",val:"IPv4 / IPv6 (this page)",
-      body:"Addressing and routing between networks - the layer this whole page is about. IPv4 uses 32-bit addresses in a single 20-60 byte header; IPv6 uses 128-bit addresses in a fixed 40-byte header plus a chain of optional extension headers. Neither layer guarantees delivery - that's Transport's job above it.",
-      note:"see the IPv6 Header and IPv4 Header tabs above to compare the two headers byte for byte."},
-    l2:{label:"L2 - Data Link",kind:"flag",val:"Ethernet frame",
-      body:"Delivers a frame across a single physical link using link-layer (MAC) addresses, with no concept of routing beyond that link. The EtherType field is what tells the receiver whether the payload is IPv4 or IPv6 - there's no version field at this layer the way IP has one.",
-      note:"struct ethhdr {\n  unsigned char  h_dest[6];\n  unsigned char  h_source[6];\n  unsigned short h_proto;\n  /* 0x0800 = IPv4, 0x86DD = IPv6 */\n};"}
-  };
-  var osiRows=[].slice.call(document.querySelectorAll("#osi-list .field"));
-  var osiDetail=document.getElementById("osi-detail");
-  var od={t:osiDetail.querySelector("h3"),c:osiDetail.querySelector(".dc"),b:osiDetail.querySelector("p"),n:osiDetail.querySelector(".dn"),kind:osiDetail.querySelector(".kind")};
-  function showOsi(key){
-    var o=OSI[key];
-    od.t.textContent=o.label; od.c.textContent=o.val; od.b.textContent=o.body; od.n.textContent=o.note||""; od.kind.textContent=KINDS[o.kind];
-  }
-  osiRows.forEach(function(row){
-    row.addEventListener("mouseenter",function(){
-      osiRows.forEach(function(r){r.classList.remove("cued");});
-      row.classList.add("cued");
-      showOsi(row.dataset.osi);
-    });
-  });
-  document.getElementById("osi-list").addEventListener("mouseleave",function(){
-    osiRows.forEach(function(r){r.classList.remove("cued");});
-    osiRows[1].classList.add("cued");
-    showOsi("l3");
-  });
-  // pre-measure all three states before settling on the default
-  var osiMaxH=0;
-  Object.keys(OSI).forEach(function(key){ showOsi(key); if(osiDetail.scrollHeight>osiMaxH) osiMaxH=osiDetail.scrollHeight; });
-  document.querySelector("#osi-list").closest(".block").querySelector(".detailcol").style.minHeight=(osiMaxH+6)+"px";
-  showOsi("l3");
 
 })();
 </script>
