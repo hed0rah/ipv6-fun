@@ -17,3 +17,6 @@ a.out
 .vscode/
 *.swp
 .DS_Store
+
+# reference clones for research, not our code
+/ipv6_tools/

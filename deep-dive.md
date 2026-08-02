@@ -560,25 +560,30 @@ real-interface capable second - see the authorization banner in the
   2005) specifies a cryptographic (CGA-based) fix for exactly this, and
   it exists precisely because this gap was recognized as a problem from
   early on - it just never got meaningfully deployed.
-- **Fragmentation abuse** - atomic fragments (a single "fragment" that is
-  actually the whole packet, historically used to slip past filters that
-  only inspect the first fragment) and genuinely overlapping fragments
-  that reassemble into something different from what a middlebox
-  inspected. Pairs with `tools/frag6` and the extension-header ordering
-  tricks in [Extension Headers](#extension-headers).
+- **Fragmentation abuse** - two distinct hazards, both implemented in
+  [`tools/frag6`](tools/frag6) and `demos/10-attack-lab/03-fragmentation-abuse.py`:
+  **atomic fragments** ([RFC 6946](https://www.rfc-editor.org/rfc/rfc6946), 2013)
+  - a single "fragment" that is actually the whole packet (offset 0,
+  M=0), historically used to slip past filters that treat "has a
+  Fragment header" as "can't fully inspect this" - and **overlapping
+  fragments** ([RFC 5722](https://www.rfc-editor.org/rfc/rfc5722), 2009)
+  - two fragments both claiming the same byte range, so which content
+  survives reassembly depends on implementation. RFC 5722 mandates that
+  a compliant stack discard the entire datagram the instant it detects
+  an overlap, specifically because years of IPv4 IDS evasion research
+  (Ptacek and Newsham, 1998) showed ambiguous reassembly is unfixable
+  any other way. Pairs with the extension-header ordering tricks in
+  [Extension Headers](#extension-headers).
 - **RA flooding** - flood enough distinct RAs (usually with different
   source addresses/prefixes) that hosts exhaust CPU or memory maintaining
-  default-router and prefix lists.
+  default-router and prefix lists. `demos/10-attack-lab/04-ra-flood.py`.
 
 Same lineage as the Routing Header Type 0 story in
 [A Brief History of IPv6](#a-brief-history-of-ipv6): IPv6's early design
 optimized for extensibility and trusted the local link more than
 hindsight says it should have, and most of the "attacks" here are just
-that trust assumption pointed at itself.
-
-Not yet implemented in this repo - offensive code here is being written
-deliberately, with a default-safe netns-only mode, rather than rushed in
-during scaffolding.
+that trust assumption pointed at itself. Everything in this section is
+implemented, not stubbed - see `demos/10-attack-lab/README.md`.
 
 ## Firewalling
 
@@ -648,6 +653,10 @@ fetching it with no IPv4 anywhere in the path. Runnable in
 - [RFC 4890](https://www.rfc-editor.org/rfc/rfc4890) - Recommendations for ICMPv6 Filtering
 - [RFC 7113](https://www.rfc-editor.org/rfc/rfc7113) - RA-Guard Evasion
 - [RFC 6980](https://www.rfc-editor.org/rfc/rfc6980) - Security Implications of IPv6 Fragmentation with IPv6 Neighbor Discovery
+- [RFC 5722](https://www.rfc-editor.org/rfc/rfc5722) - Handling of Overlapping IPv6 Fragments
+- [RFC 6946](https://www.rfc-editor.org/rfc/rfc6946) - Processing of IPv6 "Atomic" Fragments
+- Atlasis, "Attacking IPv6 Implementation Using Fragmentation" (2012)
+- Ptacek and Newsham, "Insertion, Evasion, and Denial of Service: Eluding Network Intrusion Detection" (1998) - the IPv4-era fragmentation/reassembly ambiguity research RFC 5722 exists to close off in IPv6
 
 ### Transition mechanisms
 

@@ -42,20 +42,27 @@ demos/
 tools/
 ├── sixctl/                     flagship CLI - addrs, ndp, ra, scan, craft
 ├── craft6/                     raw-socket C tool - hand-build header + extension header chains
-├── frag6/                      atomic/overlapping fragmentation demo tool
+├── frag6/                      raw-socket C tool - atomic (RFC 6946) & overlapping (RFC 5722) fragments
 ├── ndp_snoop/                  XDP tool - live-decode RS/RA/NS/NA/Redirect on the wire
 └── xdp_ra_guard/               XDP tool - drop unauthorized RAs, RFC 7113/6980-aware
 
-cheatsheet.md                   quick reference for IPv6 addressing, commands, ICMPv6 types
-deep-dive.md                    IPv6 from zero to packet-crafting, with history & RFC citations
-index.html                      interactive IPv4 vs IPv6 header anatomy (GitHub Pages root)
-whitepaper.html                 dense reference brief
+cheatsheet.md                    quick reference for IPv6 addressing, commands, ICMPv6 types
+deep-dive.md                     IPv6 from zero to packet-crafting, with history & RFC citations
+index.html                       interactive IPv4 vs IPv6 header anatomy (GitHub Pages root)
+icmpv6-anatomy.html              interactive RS/RA/NS/NA/Redirect anatomy
+extension-headers-anatomy.html   interactive Hop-by-Hop/Routing/Fragment/Dest. Options anatomy
+whitepaper.html                  dense reference brief, hover-term glossary
 ```
 
-`ndp_snoop` and `xdp_ra_guard` are BCC/XDP tools in the same style as
+The three `*-anatomy.html` pages share one engine (hover a field to
+light its bytes, click for a lookup table) and one running example
+host/address, so they cross-reference cleanly. `ndp_snoop` and
+`xdp_ra_guard` are BCC/XDP tools in the same style as
 [bpf-fun](https://github.com/hed0rah/bpf-fun) - see their own READMEs for
-usage. Most of `demos/02` onward and both `tools/craft6` and `tools/frag6`
-are scaffolded but not yet implemented - this repo fills in incrementally.
+usage. `demos/10-attack-lab` and `tools/frag6` are fully implemented.
+`demos/02` through `09`/`11`/`12`, `tools/craft6`, and `sixctl`'s
+`ra`/`scan`/`craft` subcommands are still scaffolded but not yet
+implemented - this repo fills in incrementally.
 
 ## Usage
 
@@ -77,6 +84,18 @@ sixctl ra sniff|send          # TODO: sniff or send router advertisements
 sixctl scan                  # TODO: multicast/NDP-based host enumeration
 sixctl craft                 # TODO: interactive header-chain builder
 ```
+
+## frag6
+
+```bash
+gcc -O2 -Wall -o frag6 tools/frag6/frag6.c
+
+sudo ./frag6 --iface eth0 --dst fd00::2 --mode atomic --payload icmp6-echo
+sudo ./frag6 --iface eth0 --dst fd00::2 --mode overlap --frag-size 8
+```
+
+See [tools/frag6/README.md](tools/frag6/README.md) for the full flag
+list and the RFC 6946 / RFC 5722 background.
 
 ## Requirements
 

@@ -1,22 +1,351 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>IPv6 Whitepaper</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en"><head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>IPv6 / Reference Brief</title>
+<meta name="description" content="Concise reference on IPv6: the fixed header field by field, Neighbor Discovery, extension headers, and the attacks/defenses that hang off both.">
+<meta property="og:title" content="IPv6 Reference Brief"><meta property="og:type" content="article">
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 4rem auto; padding: 0 1rem; line-height: 1.5; }
-  @media (prefers-color-scheme: dark) {
-    body { background: #111; color: #ddd; }
-    a { color: #6cf; }
+:root{--paper:#fcfcfa;--ink:#151515;--muted:#64625c;--line:#d8d5ce;--soft:rgba(0,0,0,0.012);--stone:#16283A;--spark:#D9622B;--spark2:#E8A26B;--sp-soft:rgba(217,98,43,0.10);--st-soft:rgba(22,40,58,0.06);--ex-bg:#faf8f3}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--ink);background:var(--paper);font-family:"Iowan Old Style","Palatino Linotype","Book Antiqua",Georgia,serif;line-height:1.45}
+.page{max-width:1240px;margin:0 auto;padding:24px 16px 44px}
+.sheet{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:26px;align-items:start}
+.paper{min-width:0;border-top:2px solid var(--stone);border-bottom:1px solid var(--line);padding:20px 0 24px}
+.eyebrow{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:0.14em;color:var(--spark);font-weight:600}
+h1,h2,h3{margin:0;font-weight:600;line-height:1.2}
+h1{font-size:clamp(1.55rem,2.1vw,1.9rem);letter-spacing:-0.02em;margin-bottom:6px;color:var(--stone)}
+h2{font-size:0.92rem;margin-top:20px;margin-bottom:6px;padding-top:10px;border-top:1px solid var(--line);color:var(--stone);text-transform:uppercase;letter-spacing:0.05em}
+h3{font-size:0.86rem;margin:8px 0 4px;color:var(--ink)}
+p{margin:0 0 6px;font-size:0.86rem}
+code{font-family:"SFMono-Regular","SF Mono",Menlo,Consolas,monospace;font-size:0.85em;background:rgba(217,215,209,0.30);padding:0.04rem 0.22rem;border-radius:1px}
+.term{cursor:pointer;border-bottom:1px dotted var(--stone);color:var(--stone);transition:.1s;padding:0 1px;font-weight:500}
+.term:hover,.term:focus-visible,.term.is-active{background:var(--sp-soft);color:var(--spark);border-bottom-color:var(--spark);outline:none}
+.lede{font-size:0.9rem;color:#242424;margin:6px 0 14px}
+.spec-line{display:inline-block;padding:2px 8px;border:1px solid var(--stone);background:var(--st-soft);font-family:"SFMono-Regular",monospace;font-size:0.74rem;color:var(--stone);margin-right:6px;letter-spacing:0.03em}
+.compare{width:100%;border-collapse:collapse;font-size:0.82rem;margin:6px 0 8px}
+.compare th,.compare td{border:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}
+.compare th{background:var(--st-soft);color:var(--stone);font-weight:600;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em}
+.compare td code{font-size:0.78em}
+.comp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:6px;margin:6px 0 10px}
+.comp{padding:7px 10px;border:1px solid var(--line);background:var(--paper);transition:.15s}
+.comp:hover{border-color:var(--spark);background:var(--sp-soft)}
+.comp .name{font-size:0.88rem;font-weight:600;color:var(--stone);margin-bottom:1px}
+.comp .role{font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;font-family:"SFMono-Regular",monospace}
+.comp .desc{font-size:0.76rem;margin-top:3px;color:#2a2a2a;line-height:1.4}
+.bul{list-style:none;padding:0;margin:4px 0 8px}
+.bul li{padding:2px 0 2px 16px;font-size:0.84rem;position:relative;line-height:1.5;color:#222}
+.bul li::before{content:"\00B7";position:absolute;left:5px;color:var(--spark);font-weight:700;font-size:1.1rem;line-height:1}
+.bul li strong{color:var(--stone);font-weight:600}
+.bul li code{font-size:0.82em}
+.phase-list{margin:5px 0 10px;padding:0;list-style:none;counter-reset:phase}
+.phase-list li{counter-increment:phase;padding:5px 10px 5px 34px;border-left:1px solid var(--line);position:relative;margin-bottom:2px;background:rgba(0,0,0,0.012);font-size:0.84rem;line-height:1.5}
+.phase-list li::before{content:"P" counter(phase);position:absolute;left:5px;top:5px;font-family:"SFMono-Regular",monospace;font-size:0.70rem;color:var(--spark);font-weight:700;letter-spacing:0.05em}
+.phase-list li strong{color:var(--stone)}
+.phase-list li .meta{font-size:0.70rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-left:6px;font-style:italic}
+.wireblock{font-family:"SFMono-Regular",Menlo,Consolas,monospace;font-size:0.75rem;background:var(--stone);color:#cdd6de;padding:10px 12px;margin:6px 0 10px;line-height:1.55;overflow-x:auto;white-space:pre;border-left:3px solid var(--spark)}
+.wireblock .kw{color:#f5b06b}.wireblock .hdr{color:#6fc2b0}.wireblock .cm{color:#7d8a99;font-style:italic}.wireblock .num{color:#e0b060}
+.refs{font-size:0.78rem;line-height:1.55;margin:6px 0}
+.refs .ref-row{display:grid;grid-template-columns:130px 1fr;gap:10px;padding:3px 0;border-bottom:1px dashed var(--line)}
+.refs .ref-row:last-child{border-bottom:none}
+.refs .ref-row .key{font-family:"SFMono-Regular",monospace;font-size:0.72rem;color:var(--stone);font-weight:600;text-transform:uppercase;letter-spacing:0.03em}
+.refs .ref-row .val a{color:var(--spark);text-decoration:none;border-bottom:1px dotted var(--spark)}
+.refs .ref-row .val a:hover{background:var(--sp-soft)}
+.refs .ref-row .val .desc{color:var(--muted);font-style:italic;font-size:0.74rem;margin-left:6px}
+.figure{margin:8px 0 12px;border:1px solid var(--line);background:var(--ex-bg);padding:10px}
+.figure svg{display:block;max-width:100%;height:auto;margin:0 auto}
+.figure .cap{font-size:0.74rem;color:var(--muted);text-align:center;margin-top:6px;font-style:italic;letter-spacing:0.02em}
+.margin{position:sticky;top:18px;border-top:2px solid var(--stone);padding-top:10px;font-size:0.82rem;color:var(--muted)}
+.margin-card{border:1px solid var(--line);border-left:3px solid var(--spark);background:rgba(0,0,0,0.012);padding:12px 12px 10px;min-height:340px}
+.margin h3{font-size:0.9rem;margin-bottom:6px;color:var(--stone)}
+.margin p{margin-bottom:7px;font-size:0.8rem}
+.margin-meta{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin:7px 0 8px;padding:7px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);color:#2d2d2a}
+.margin-meta strong{display:block;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1px}
+.margin-meta span{font-size:0.8rem}
+.margin-code{display:inline-block;margin-top:2px;margin-bottom:6px;color:var(--spark)}
+.margin-section{margin-top:10px}
+.margin-section .label{font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:3px}
+.margin-section ul{margin:0;padding:0;list-style:none}
+.margin-section li{padding:2px 0;border-top:1px solid rgba(216,213,206,0.7);font-size:0.76rem;color:#2a2a2a;font-family:"SFMono-Regular",Menlo,Consolas,monospace}
+.margin-section li:first-child{border-top:none}
+.margin-section a{color:var(--spark);text-decoration:none;border-bottom:1px dotted var(--spark);font-family:inherit;word-break:break-word}
+.margin-section a:hover{background:var(--sp-soft);color:var(--stone)}
+.margin-section li.link-item{white-space:normal;font-family:inherit;padding:4px 0}
+.margin-section li.link-item .src{display:block;font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-top:1px;font-family:"SFMono-Regular",monospace}
+.margin-hint{font-size:0.72rem;color:var(--muted);margin-top:12px;padding-top:7px;border-top:1px solid var(--line)}
+.margin-hint kbd{font-family:"SFMono-Regular",Menlo,Consolas,monospace;font-size:0.7rem;padding:0 4px;border:1px solid var(--line);border-radius:2px;background:var(--soft)}
+.repo-link{display:inline-block;margin-top:4px;padding:3px 8px;border:1px solid var(--stone);background:var(--paper);color:var(--stone);text-decoration:none;font-size:0.72rem;letter-spacing:0.04em;font-family:"SFMono-Regular",monospace}
+.repo-link:hover{background:var(--stone);color:var(--paper)}
+.footer{margin-top:20px;padding-top:10px;border-top:1px solid var(--line);color:var(--muted);font-size:0.76rem}
+.footer .signoff{color:var(--stone);font-weight:600;letter-spacing:0.05em}
+@media (max-width:980px){.sheet{grid-template-columns:1fr}.margin{position:static;order:2;border-top:1px solid var(--line)}.comp-grid{grid-template-columns:1fr}.compare{font-size:0.76rem}.refs .ref-row{grid-template-columns:100px 1fr}}
+@media print{body{background:#fff}.margin,.term{cursor:default}.term{border-bottom:none;color:var(--stone)!important;background:transparent!important}}
+</style></head><body><div class="page"><div class="sheet">
+<article class="paper">
+<p class="eyebrow">Reference Brief / Internet Protocol Version 6</p>
+<h1>The header, the neighbors, and what abuses both</h1>
+<p class="lede"><span class="spec-line">RFC 8200 (STD 86)</span><span class="spec-line">40-byte fixed header</span><span class="spec-line">128-bit addressing</span> IPv6 replaces IPv4's variable-length options with a chain of extension headers, drops the header checksum entirely, and folds ARP, ping, and multicast group management into one protocol, ICMPv6. Neighbor Discovery inherits ARP's total lack of authentication with more moving parts to abuse. This brief covers the fixed header field by field, the Neighbor Discovery message types, the extension header chain, and the attacks/defenses built in this repo, with hover-context on every underlined term.</p>
+
+<h2>The fixed header, field by field</h2>
+<div class="comp-grid">
+<div class="comp"><span class="term" data-term="version"><span class="name">version</span></span><div class="role">4 bits</div><div class="desc">Always 6. Same bit position IPv4 uses for its own version nibble.</div></div>
+<div class="comp"><span class="term" data-term="traffic-class"><span class="name">traffic class</span></span><div class="role">8 bits</div><div class="desc">DSCP (6 bits, QoS class) + ECN (2 bits, congestion signaling).</div></div>
+<div class="comp"><span class="term" data-term="flow-label"><span class="name">flow label</span></span><div class="role">20 bits</div><div class="desc">Router load-balancing hint. Usually 0 in practice.</div></div>
+<div class="comp"><span class="term" data-term="payload-length"><span class="name">payload length</span></span><div class="role">16 bits</div><div class="desc">Everything after the fixed header - extension headers plus data.</div></div>
+<div class="comp"><span class="term" data-term="next-header"><span class="name">next header</span></span><div class="role">8 bits</div><div class="desc">Points to the next extension header or upper-layer protocol.</div></div>
+<div class="comp"><span class="term" data-term="hop-limit"><span class="name">hop limit</span></span><div class="role">8 bits</div><div class="desc">IPv4's TTL, renamed because it was never really about time.</div></div>
+<div class="comp"><span class="term" data-term="saddr"><span class="name">source address</span></span><div class="role">128 bits</div><div class="desc">Always full-width, even for link-local-only traffic.</div></div>
+<div class="comp"><span class="term" data-term="daddr"><span class="name">destination address</span></span><div class="role">128 bits</div><div class="desc">Unicast, multicast, or (source-only) the unspecified ::.</div></div>
+</div>
+
+<h2>Address formation</h2>
+<p><strong>SLAAC:</strong> a host builds an address by concatenating a router-advertised prefix with an interface ID, then runs <span class="term" data-term="dad">Duplicate Address Detection</span> before using it. See <span class="term" data-term="slaac">SLAAC</span>.</p>
+<p><strong>Interface ID, two ways:</strong> <span class="term" data-term="eui64">EUI-64</span> derives it deterministically from the MAC (stable forever, trackable forever); <span class="term" data-term="privacy-ext">privacy extensions</span> generate a pseudo-random one instead, regenerated periodically, specifically to close that tracking gap.</p>
+<p><strong>DHCPv6:</strong> stateful (server assigns the address), stateless (SLAAC handles the address, DHCPv6 supplies extras), or prefix delegation (a router requests a routed block to hand out on its own LANs) - which mode runs is entirely the <span class="term" data-term="ra">RA</span>'s M/O flags talking.</p>
+
+<div class="figure">
+<svg viewBox="0 0 620 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="EUI-64 derivation from a MAC address">
+  <style>
+    .b5{fill:#fcfcfa;stroke:#16283A;stroke-width:1.2}
+    .bs5{fill:#fff3ea;stroke:#D9622B;stroke-width:1.2}
+    .l5{font-family:Iowan Old Style,Georgia,serif;font-size:11px;fill:#16283A}
+    .m5{font-family:SFMono-Regular,Menlo,monospace;font-size:11px;fill:#16283A}
+    .mu5{font-family:SFMono-Regular,Menlo,monospace;font-size:9.5px;fill:#64625c}
+    .arr5{stroke:#D9622B;stroke-width:1.4;fill:none;marker-end:url(#ar5)}
+  </style>
+  <defs><marker id="ar5" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#D9622B"/></marker></defs>
+
+  <rect class="b5" x="16" y="20" width="150" height="80"/>
+  <text class="l5" x="91" y="38" text-anchor="middle">MAC address</text>
+  <text class="m5" x="30" y="62">00:1a:2b</text>
+  <text class="mu5" x="30" y="76">OUI (24 bits)</text>
+  <text class="m5" x="90" y="90" text-anchor="middle"> </text>
+
+  <rect class="b5" x="230" y="20" width="180" height="80"/>
+  <text class="l5" x="320" y="38" text-anchor="middle">insert 0xfffe</text>
+  <text class="m5" x="244" y="62">00:1a:2b:ff:fe:3c:4d:5e</text>
+  <text class="mu5" x="244" y="76">64 bits, not yet flipped</text>
+
+  <rect class="bs5" x="452" y="20" width="152" height="80"/>
+  <text class="l5" x="528" y="38" text-anchor="middle">flip bit 0x02</text>
+  <text class="m5" x="466" y="62">02:1a:..:4d:5e</text>
+  <text class="mu5" x="466" y="76">universal/local, inverted</text>
+
+  <path class="arr5" d="M166 60 L 230 60"/>
+  <path class="arr5" d="M410 60 L 452 60"/>
+
+  <rect class="bs5" x="120" y="140" width="380" height="50"/>
+  <text class="l5" x="310" y="158" text-anchor="middle">interface identifier (64 bits)</text>
+  <text class="m5" x="310" y="178" text-anchor="middle">021a:2bff:fe3c:4d5e</text>
+
+  <path class="arr5" d="M528 100 C 528 125, 400 125, 400 140"/>
+</svg>
+<div class="cap">MAC 00:1a:2b:3c:4d:5e becomes interface ID 021a:2bff:fe3c:4d5e. The bit flip is backwards from intuition: 0 means "globally unique," and EUI-64 sets it to say exactly that.</div>
+</div>
+
+<h2>Neighbor Discovery message types</h2>
+<table class="compare"><thead><tr><th>message</th><th>ICMPv6 type</th><th>sent to</th><th>purpose</th></tr></thead><tbody>
+<tr><td><span class="term" data-term="rs">RS</span></td><td>133</td><td>ff02::2 (all-routers)</td><td>"any routers out there?" - skip the wait for the periodic RA</td></tr>
+<tr><td><span class="term" data-term="ra">RA</span></td><td>134</td><td>ff02::1 or unicast</td><td>prefix, defaults, M/O flags, router preference</td></tr>
+<tr><td><span class="term" data-term="ns">NS</span></td><td>135</td><td>solicited-node multicast</td><td>"who has this address?" - also the DAD probe</td></tr>
+<tr><td><span class="term" data-term="na">NA</span></td><td>136</td><td>unicast or multicast</td><td>the reply - or, unsolicited, a cache-poisoning primitive</td></tr>
+<tr><td><span class="term" data-term="redirect">Redirect</span></td><td>137</td><td>unicast</td><td>"use this other router for this destination"</td></tr>
+</tbody></table>
+
+<h2>Extension header chain</h2>
+<p>RFC 8200 mandates this order when more than one extension header is present. Every extension header except Fragment shares a generic <code>Next Header + Hdr Ext Len + data</code> shape; <span class="term" data-term="esp">ESP</span> breaks even that by putting its Next Header field at the end instead of the front.</p>
+<div class="wireblock"><span class="cm"># mandated order, RFC 8200 4.1</span>
+IPv6 -&gt; <span class="hdr">Hop-by-Hop</span>(<span class="num">0</span>) -&gt; Destination(<span class="num">60</span>, intermediate)
+     -&gt; <span class="hdr">Routing</span>(<span class="num">43</span>) -&gt; <span class="hdr">Fragment</span>(<span class="num">44</span>) -&gt; AH(<span class="num">51</span>) -&gt; ESP(<span class="num">50</span>)
+     -&gt; Destination(<span class="num">60</span>, final) -&gt; upper-layer (TCP/UDP/ICMPv6)
+
+<span class="cm"># the fragment header is the odd one out: fixed 8 bytes, no Hdr Ext Len</span>
+<span class="kw">Next Header(8)</span> | Reserved(8) | Fragment Offset(13) Res(2) M(1) | Identification(32)</div>
+<p>Manipulating this chain - reordering, splitting across fragments, repeating a header - is the main class of IPv6-specific firewall/IDS evasion. See <span class="term" data-term="hopbyhop">Hop-by-Hop</span>, <span class="term" data-term="routing-hdr">Routing</span>, and <span class="term" data-term="fragment-hdr">Fragment</span>.</p>
+
+<h2>Fragmentation hazards</h2>
+<table class="compare"><thead><tr><th>hazard</th><th>shape</th><th>compliant behavior</th><th>this repo</th></tr></thead><tbody>
+<tr><td><span class="term" data-term="atomic-frag">atomic fragment</span></td><td>Fragment header present, offset 0, M=0</td><td>process normally (RFC 6946)</td><td><code>tools/frag6 --mode atomic</code></td></tr>
+<tr><td>overlapping fragments</td><td>two fragments claim the same byte range</td><td>discard the whole datagram (RFC 5722)</td><td><code>tools/frag6 --mode overlap</code></td></tr>
+</tbody></table>
+
+<h2>Router Advertisement anatomy</h2>
+<table class="compare"><thead><tr><th>field</th><th>width</th><th>meaning</th></tr></thead><tbody>
+<tr><td>M (Managed)</td><td>1 bit</td><td>get the address from DHCPv6, not SLAAC</td></tr>
+<tr><td>O (Other)</td><td>1 bit</td><td>get non-address config (DNS, NTP) from DHCPv6</td></tr>
+<tr><td>Prf (preference)</td><td>2 bits</td><td>01 high, 00 medium, 11 low (RFC 4191) - picks among multiple routers</td></tr>
+<tr><td>Prefix Information Option</td><td>option, type 3</td><td>the prefix itself, plus L (on-link) and A (autonomous/SLAAC-eligible) flags</td></tr>
+</tbody></table>
+
+<h2>Attacks and defenses in this repo</h2>
+<ol class="phase-list">
+<li><strong>Rogue RA / SLAAC attack.</strong> Advertise a bogus prefix and/or a higher-preference default route. <span class="meta">demos/10-attack-lab/01-rogue-ra.py</span></li>
+<li><strong>NDP spoofing.</strong> A gratuitous <span class="term" data-term="na">NA</span> with the Override flag set - the direct ARP-spoofing equivalent. <span class="meta">demos/10-attack-lab/02-ndp-spoof.py</span></li>
+<li><strong>Fragmentation abuse.</strong> Atomic and overlapping fragments, both by hand at the raw-socket level. <span class="meta">tools/frag6, demos/10-attack-lab/03-fragmentation-abuse.py</span></li>
+<li><strong>RA flooding.</strong> Enough distinct RAs to exhaust a host's default-router/prefix-list processing. <span class="meta">demos/10-attack-lab/04-ra-flood.py</span></li>
+<li><strong>NDP visibility.</strong> Live-decode RS/RA/NS/NA/Redirect on the wire via an XDP hook. <span class="meta">tools/ndp_snoop</span></li>
+<li><strong>The defense.</strong> A <span class="term" data-term="ra-guard">real RA Guard</span> - walks the extension header chain instead of trusting the fixed header, and drops fragmented ND-shaped traffic instead of reassembling it. <span class="meta">tools/xdp_ra_guard</span></li>
+</ol>
+
+<h2>Operations and debugging</h2>
+<ul class="bul">
+<li><strong>Classify any address at a glance</strong>: <code>sixctl addrs</code>, or by hand - <code>fe80::/10</code> link-local, <code>fc00::/7</code> ULA, <code>2000::/3</code> GUA, <code>ff00::/8</code> multicast.</li>
+<li><strong>Watch NDP live</strong>: <code>tcpdump -i eth0 icmp6</code>, or <code>ndp_snoop --iface eth0</code> for decoded output.</li>
+<li><strong>Trigger an RA on demand</strong>: <code>rdisc6 eth0</code> from the <code>ndisc6</code> suite sends an RS and prints the reply.</li>
+<li><strong>Read the neighbor cache</strong>: <code>ip -6 neigh show</code> - the ARP-table equivalent, with real state (INCOMPLETE/REACHABLE/STALE/...).</li>
+<li><strong>Check what a firewall must never block</strong>: NS/NA/RS/RA/Redirect (types 133-137) on-link, or IPv6 itself stops working. RFC 4890 is the reference.</li>
+</ul>
+
+<h2>Pitfalls</h2>
+<ul class="bul">
+<li><strong>Blocking ICMPv6 wholesale breaks IPv6.</strong> There's no ARP, no broadcast, no separate ping protocol underneath it - NDP itself is ICMPv6.</li>
+<li><strong>NDP has no authentication.</strong> Anyone on the link can claim to be a router or claim to own an address. <span class="term" data-term="send">SEND</span> (RFC 3971) fixed this cryptographically in 2005 and essentially nobody deployed it.</li>
+<li><strong>A naive RA Guard is not a defense.</strong> Checking only the unfragmented ICMPv6 type is exactly what RFC 7113 describes being evaded.</li>
+<li><strong>Privacy addresses aren't a free pass.</strong> A host keeps its stable EUI-64 address live for incoming connections alongside rotating temporary ones - both are visible on the wire.</li>
+<li><strong>Extension header order is a filtering blind spot.</strong> A filter keying off Next Header in the fixed header without walking the chain can be bypassed by burying the real upper-layer protocol behind Hop-by-Hop or Destination Options.</li>
+</ul>
+
+<h2>References</h2>
+<div class="refs">
+<div class="ref-row"><span class="key">rfc</span><span class="val"><a href="https://www.rfc-editor.org/rfc/rfc8200">RFC 8200</a><span class="desc">the base spec, Internet Standard (STD 86)</span></span></div>
+<div class="ref-row"><span class="key">rfc</span><span class="val"><a href="https://www.rfc-editor.org/rfc/rfc4291">RFC 4291</a><span class="desc">addressing architecture, incl. EUI-64 (Appendix A)</span></span></div>
+<div class="ref-row"><span class="key">rfc</span><span class="val"><a href="https://www.rfc-editor.org/rfc/rfc4861">RFC 4861</a> / <a href="https://www.rfc-editor.org/rfc/rfc4862">4862</a><span class="desc">Neighbor Discovery / SLAAC</span></span></div>
+<div class="ref-row"><span class="key">rfc</span><span class="val"><a href="https://www.rfc-editor.org/rfc/rfc4890">RFC 4890</a><span class="desc">what a firewall should and shouldn't filter</span></span></div>
+<div class="ref-row"><span class="key">rfc</span><span class="val"><a href="https://www.rfc-editor.org/rfc/rfc7113">RFC 7113</a> / <a href="https://www.rfc-editor.org/rfc/rfc6980">6980</a><span class="desc">RA-Guard evasion / fragmented ND messages</span></span></div>
+<div class="ref-row"><span class="key">rfc</span><span class="val"><a href="https://www.rfc-editor.org/rfc/rfc5722">RFC 5722</a> / <a href="https://www.rfc-editor.org/rfc/rfc6946">6946</a><span class="desc">overlapping / atomic fragments</span></span></div>
+<div class="ref-row"><span class="key">tour</span><span class="val"><a href="deep-dive.md">deep-dive.md</a><span class="desc">long-form companion, ~45 citations, full history</span></span></div>
+<div class="ref-row"><span class="key">cheat</span><span class="val"><a href="cheatsheet.md">cheatsheet.md</a><span class="desc">dense one-page quick reference</span></span></div>
+<div class="ref-row"><span class="key">anatomy</span><span class="val"><a href="index.html">index.html</a><span class="desc">interactive IPv4-vs-IPv6 byte/bit header diagram</span></span></div>
+<div class="ref-row"><span class="key">anatomy</span><span class="val"><a href="icmpv6-anatomy.html">icmpv6-anatomy.html</a><span class="desc">RS/RA/NS/NA/Redirect, byte by byte</span></span></div>
+<div class="ref-row"><span class="key">anatomy</span><span class="val"><a href="extension-headers-anatomy.html">extension-headers-anatomy.html</a><span class="desc">Hop-by-Hop/Routing/Fragment/Destination Options</span></span></div>
+<div class="ref-row"><span class="key">repo</span><span class="val"><a href="https://github.com/hed0rah/ipv6-fun">ipv6-fun on GitHub</a><span class="desc">demos, sixctl, frag6, ndp_snoop, xdp_ra_guard</span></span></div>
+</div>
+
+<div class="footer">
+<span class="signoff">END / IPv6 Reference Brief</span>
+<p style="margin-top:6px">Companion to the demos and tools in the repo. Hover any underlined term for context. Keyboard: <kbd>Tab</kbd> through terms.</p>
+</div>
+</article>
+
+<aside class="margin">
+<div class="margin-card">
+<h3 id="m-title">Hover any underlined term</h3>
+<code class="margin-code" id="m-code">data-term</code>
+<p id="m-body">Each <span style="color:var(--stone)">underlined</span> word in the brief opens a context card here. Try <span class="term" data-term="eui64">eui64</span>, <span class="term" data-term="ra-guard">ra-guard</span>, or <span class="term" data-term="fragment-hdr">fragment-hdr</span> to start.</p>
+<div class="margin-meta" id="m-meta"></div>
+<div class="margin-section" id="m-rel-wrap" style="display:none"><div class="label">related</div><ul id="m-rel"></ul></div>
+<div class="margin-section" id="m-notes-wrap" style="display:none"><div class="label">notes</div><ul id="m-notes"></ul></div>
+<div class="margin-section" id="m-links-wrap" style="display:none"><div class="label">links</div><ul id="m-links"></ul></div>
+<a class="repo-link" href="https://github.com/hed0rah/ipv6-fun" target="_blank" rel="noopener">github.com/hed0rah/ipv6-fun</a>
+<div class="margin-hint">Hover, focus with <kbd>Tab</kbd>, or click any underlined term.</div>
+</div>
+</aside>
+
+</div></div>
+
+<script id="reference-data" type="application/json">
+{
+"version":{"title":"Version field","code":"4 bits, RFC 8200 §3","body":"The first nibble on the wire - lets a dual-stack receiver tell IPv4 (a 4) from IPv6 (a 6) before parsing anything else.","meta":{"width":"4 bits","value":"always 6"},"rel":["next-header","hop-limit"],"notes":["IPv4's version nibble sits in the exact same bit position"]},
+"traffic-class":{"title":"Traffic Class","code":"8 bits: DSCP(6) + ECN(2)","body":"QoS marking split across a byte that was historically IPv4's Type of Service. DSCP carries a forwarding-class hint; ECN lets a router mark congestion instead of dropping.","meta":{"width":"8 bits","dscp":"RFC 2474","ecn":"RFC 3168"},"rel":["version","flow-label"],"links":[{"label":"RFC 2474","url":"https://www.rfc-editor.org/rfc/rfc2474"},{"label":"RFC 3168","url":"https://www.rfc-editor.org/rfc/rfc3168"}]},
+"flow-label":{"title":"Flow Label","code":"20 bits, RFC 6437","body":"Meant to let routers hash/load-balance a flow without inspecting the transport header. Set once at flow start; in practice most stacks leave it at 0 or fill it with a 5-tuple hash.","meta":{"width":"20 bits","spec":"RFC 6437 (2011)"},"rel":["traffic-class"],"notes":["flow-label-aware routing never saw wide deployment"],"links":[{"label":"RFC 6437","url":"https://www.rfc-editor.org/rfc/rfc6437"}]},
+"payload-length":{"title":"Payload Length","code":"16 bits","body":"Length of everything after the 40-byte fixed header - extension headers plus upper-layer data. Never includes the fixed header itself, unlike IPv4's Total Length.","meta":{"width":"16 bits","max":"65535 bytes"},"rel":["next-header"],"notes":["0x0000 means a jumbogram - the real length lives in a Hop-by-Hop Jumbo Payload option, RFC 2675"]},
+"next-header":{"title":"Next Header","code":"8 bits, IANA protocol numbers","body":"Points to whatever comes next - an extension header or the upper-layer protocol. Same numbering IPv4 calls Protocol; TCP is 6 and UDP is 17 in both.","meta":{"width":"8 bits","tcp":"6","udp":"17","icmpv6":"58"},"rel":["hopbyhop","fragment-hdr","icmpv6"],"notes":["walks a chain - see the extension header order section"]},
+"hop-limit":{"title":"Hop Limit","code":"8 bits","body":"Decremented by 1 at every router; dropped and an ICMPv6 Time Exceeded sent back at 0. Direct functional twin of IPv4's TTL, renamed because it was never really measuring time.","meta":{"width":"8 bits","common":"64 (Linux/macOS), 128 (Windows)"},"rel":["version"],"notes":["traceroute infers the sender's OS by working backward from the observed hop count"]},
+"saddr":{"title":"Source Address","code":"128 bits","body":"No exceptions - even a link-local-only packet carries a full 128-bit address here.","meta":{"width":"128 bits"},"rel":["daddr","eui64"]},
+"daddr":{"title":"Destination Address","code":"128 bits","body":"Unicast, multicast, or (source-only) the unspecified address ::. A multicast destination here is exactly how Neighbor Solicitation avoids ever needing a broadcast.","meta":{"width":"128 bits"},"rel":["saddr","ns"]},
+"eui64":{"title":"EUI-64","code":"RFC 4291 Appendix A","body":"Splits a 48-bit MAC into two 24-bit halves, inserts 0xfffe between them, and flips the universal/local bit - producing a deterministic, MAC-derived 64-bit interface ID.","meta":{"source":"48-bit MAC","flip bit":"0x02 (universal/local)"},"rel":["slaac","privacy-ext"],"notes":["MAC 00:1a:2b:3c:4d:5e -> interface ID 021a:2bff:fe3c:4d5e"],"links":[{"label":"RFC 4291","url":"https://www.rfc-editor.org/rfc/rfc4291"}]},
+"slaac":{"title":"SLAAC","code":"RFC 4862","body":"Stateless Address Autoconfiguration: a host concatenates a router-advertised prefix with an interface ID, then runs Duplicate Address Detection before using the result.","meta":{"spec":"RFC 4862 (2007)","lineage":"RFC 1971 -> 2462 -> 4862"},"rel":["eui64","dad","ra"],"links":[{"label":"RFC 4862","url":"https://www.rfc-editor.org/rfc/rfc4862"}]},
+"privacy-ext":{"title":"Privacy (temporary) addresses","code":"RFC 4941","body":"A pseudo-random interface ID, regenerated periodically, so a host isn't trackable across networks by a stable EUI-64. A direct response to WiFi-era MAC-tracking concerns.","meta":{"spec":"RFC 4941 (2007)","obsoletes":"RFC 3041 (2001)"},"rel":["eui64","slaac"],"links":[{"label":"RFC 4941","url":"https://www.rfc-editor.org/rfc/rfc4941"}]},
+"dad":{"title":"Duplicate Address Detection","code":"RFC 4862 §5.4","body":"Before using any new address, a host sends a Neighbor Solicitation from the unspecified address (::) targeting its own tentative address. Silence means it's free to use.","meta":{"trigger":"source = ::","timer":"RetransTimer, default 1000ms"},"rel":["ns","slaac"]},
+"ns":{"title":"Neighbor Solicitation","code":"ICMPv6 type 135","body":"\"Who has this address?\" - the direct ARP-replacement message. Also doubles as the DAD probe when sourced from ::.","meta":{"type":"135","sent to":"solicited-node multicast"},"rel":["na","dad"]},
+"na":{"title":"Neighbor Advertisement","code":"ICMPv6 type 136","body":"The reply to an NS, or sent unsolicited (\"gratuitous\") to update caches proactively. The Override flag (O=1) lets it overwrite an existing cache entry - the exact primitive NDP spoofing abuses.","meta":{"type":"136","flags":"R S O"},"rel":["ns","ra-guard"],"notes":["thc-ipv6's parasite6 automates gratuitous NA spoofing network-wide","this repo: demos/10-attack-lab/02-ndp-spoof.py"]},
+"rs":{"title":"Router Solicitation","code":"ICMPv6 type 133","body":"\"Any routers out there?\" - lets a host get an immediate RA on boot instead of waiting out the periodic interval, which can be minutes.","meta":{"type":"133","sent to":"ff02::2, all-routers"},"rel":["ra"]},
+"ra":{"title":"Router Advertisement","code":"ICMPv6 type 134","body":"Carries the prefix (via a Prefix Information Option), M/O flags telling a host whether to use DHCPv6, and a router preference.","meta":{"type":"134","flags":"M O H Prf"},"rel":["rs","slaac","ra-guard"]},
+"redirect":{"title":"Redirect","code":"ICMPv6 type 137","body":"\"Use this other router instead\" - a router telling a host a better next-hop exists for a specific destination on the same link.","meta":{"type":"137"},"rel":["ra"]},
+"hopbyhop":{"title":"Hop-by-Hop Options","code":"Next Header 0","body":"The one extension header every router on the path must inspect, unlike all the others, which only the destination processes. Must come first in the chain if present.","meta":{"next header":"0","order":"first"},"rel":["next-header","fragment-hdr"]},
+"routing-hdr":{"title":"Routing header","code":"Next Header 43","body":"Source routing. Type 0 (arbitrary routing) was deprecated after a 2007 amplification-attack disclosure; Type 4 (SRv6) is its tightly-scoped modern successor.","meta":{"next header":"43","type 0":"deprecated, RFC 5095","type 4":"SRv6, RFC 8754"},"rel":["rh0"],"links":[{"label":"RFC 5095","url":"https://www.rfc-editor.org/rfc/rfc5095"},{"label":"RFC 8754","url":"https://www.rfc-editor.org/rfc/rfc8754"}]},
+"fragment-hdr":{"title":"Fragment header","code":"Next Header 44, fixed 8 bytes","body":"The odd one out - no Hdr Ext Len field, always exactly 8 bytes. Carries Fragment Offset (13 bits, 8-byte units), M (more fragments), and a 32-bit Identification tying fragments together.","meta":{"size":"8 bytes fixed","offset unit":"8 bytes"},"rel":["atomic-frag","overlap-frag"]},
+"esp":{"title":"ESP (Encapsulating Security Payload)","code":"Next Header 50","body":"Breaks the \"Next Header up front\" pattern - its own Next Header field sits at the END of the header, after the payload and padding. Any generic chain-walker has to special-case it.","meta":{"next header":"50","quirk":"Next Header field is trailing"},"rel":["routing-hdr"],"links":[{"label":"RFC 4303","url":"https://www.rfc-editor.org/rfc/rfc4303"}]},
+"rh0":{"title":"Routing Header Type 0","code":"deprecated 2007","body":"Arbitrary source routing that could be abused to bounce a packet repeatedly between two colluding routers, amplifying bandwidth - disclosed by Philippe Biondi and Arnaud Ebalard, deprecated within the year.","meta":{"disclosed":"2007, Biondi & Ebalard","deprecated by":"RFC 5095"},"rel":["routing-hdr"]},
+"ra-guard":{"title":"RA Guard","code":"RFC 7113 / RFC 6980","body":"A switch- or host-level filter dropping unauthorized Router Advertisements. Naive implementations that only check the unfragmented ICMPv6 type get evaded by hiding the RA behind extension headers or fragmentation.","meta":{"evasion":"RFC 7113","fragmented ND":"RFC 6980: drop, don't reassemble"},"rel":["ra","na"],"notes":["this repo: tools/xdp_ra_guard walks the chain and drops fragmented ND traffic"],"links":[{"label":"RFC 7113","url":"https://www.rfc-editor.org/rfc/rfc7113"},{"label":"RFC 6980","url":"https://www.rfc-editor.org/rfc/rfc6980"}]},
+"atomic-frag":{"title":"Atomic fragment","code":"RFC 6946","body":"A single packet carrying a Fragment header that isn't actually fragmented (offset 0, M=0). Some stateless filters treat \"has a fragment header\" as \"can't fully inspect this,\" even though it's complete.","meta":{"spec":"RFC 6946 (2013)"},"rel":["fragment-hdr","overlap-frag"],"notes":["this repo: tools/frag6 --mode atomic"],"links":[{"label":"RFC 6946","url":"https://www.rfc-editor.org/rfc/rfc6946"}]},
+"overlap-frag":{"title":"Overlapping fragments","code":"RFC 5722","body":"Two fragments both claiming the same byte range. A compliant stack must discard the entire reassembled datagram the instant it detects the overlap - closing off decades of IPv4-era IDS evasion research.","meta":{"spec":"RFC 5722 (2009)","background":"Ptacek & Newsham, 1998"},"rel":["fragment-hdr","atomic-frag"],"notes":["this repo: tools/frag6 --mode overlap"],"links":[{"label":"RFC 5722","url":"https://www.rfc-editor.org/rfc/rfc5722"}]},
+"send":{"title":"SEND (Secure Neighbor Discovery)","code":"RFC 3971","body":"A cryptographic (CGA-based) fix for NDP's total lack of authentication - specified in 2005, precisely because the spoofing gap was recognized early. Never saw meaningful real-world adoption.","meta":{"spec":"RFC 3971 (2005)","adoption":"minimal"},"rel":["na","ns"],"links":[{"label":"RFC 3971","url":"https://www.rfc-editor.org/rfc/rfc3971"}]},
+"icmpv6":{"title":"ICMPv6","code":"RFC 4443","body":"Folds ping, error reporting, MLD, and all of Neighbor Discovery into one protocol - a deliberate consolidation of what IPv4 spread across ICMP, ARP, and IGMP separately.","meta":{"spec":"RFC 4443 (2006)","lineage":"RFC 1885 -> 2463 -> 4443"},"rel":["next-header","ns","ra"],"links":[{"label":"RFC 4443","url":"https://www.rfc-editor.org/rfc/rfc4443"}]}
+}
+</script>
+
+<script>
+(function(){
+  var D = JSON.parse(document.getElementById('reference-data').textContent || '{}');
+  var T = {
+    title: document.getElementById('m-title'),
+    code:  document.getElementById('m-code'),
+    body:  document.getElementById('m-body'),
+    meta:  document.getElementById('m-meta'),
+    rel:   document.getElementById('m-rel'), relW: document.getElementById('m-rel-wrap'),
+    notes: document.getElementById('m-notes'), notesW: document.getElementById('m-notes-wrap'),
+    links: document.getElementById('m-links'), linksW: document.getElementById('m-links-wrap')
+  };
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];});}
+  function host(u){try{return new URL(u).hostname.replace(/^www\./,'');}catch(e){return '';}}
+  function paint(k){
+    var x = D[k]; if(!x) return;
+    T.title.textContent = x.title || k;
+    T.code.textContent  = x.code || '';
+    T.body.innerHTML    = esc(x.body || '');
+    T.meta.innerHTML = '';
+    if(x.meta){ Object.keys(x.meta).forEach(function(mk){
+      var d = document.createElement('div');
+      d.innerHTML = '<strong>'+esc(mk)+'</strong><span>'+esc(x.meta[mk])+'</span>';
+      T.meta.appendChild(d);
+    }); }
+    T.rel.innerHTML='';
+    if(x.rel && x.rel.length){
+      x.rel.forEach(function(r){
+        var li=document.createElement('li');
+        if(D[r]){ li.innerHTML='<a href="#" data-jump="'+esc(r)+'">'+esc(D[r].title||r)+'</a>'; }
+        else { li.textContent=r; }
+        T.rel.appendChild(li);
+      });
+      T.relW.style.display='block';
+    } else { T.relW.style.display='none'; }
+    T.notes.innerHTML='';
+    if(x.notes && x.notes.length){
+      x.notes.forEach(function(n){ var li=document.createElement('li'); li.className='link-item'; li.textContent=n; T.notes.appendChild(li); });
+      T.notesW.style.display='block';
+    } else { T.notesW.style.display='none'; }
+    T.links.innerHTML='';
+    if(x.links && x.links.length){
+      x.links.forEach(function(l){
+        var li=document.createElement('li'); li.className='link-item';
+        li.innerHTML='<a href="'+esc(l.url)+'" target="_blank" rel="noopener">'+esc(l.label)+'</a><span class="src">'+esc(host(l.url))+'</span>';
+        T.links.appendChild(li);
+      });
+      T.linksW.style.display='block';
+    } else { T.linksW.style.display='none'; }
   }
-</style>
-</head>
-<body>
-<h1>IPv6 Whitepaper</h1>
-<p>Under construction - a dense reference brief with margin-card hover
-context, matching the treatment on <code>namespaces-fun</code>'s
-<a href="https://github.com/hed0rah/namespaces-fun/blob/main/whitepaper.html">whitepaper.html</a>.</p>
-<p>For now: <a href="cheatsheet.md">cheatsheet.md</a> is the quick reference.</p>
-</body>
-</html>
+  document.addEventListener('mouseover', function(e){
+    var t = e.target.closest && e.target.closest('.term'); if(!t) return;
+    var k = t.getAttribute('data-term'); if(!k || !D[k]) return;
+    document.querySelectorAll('.term.is-active').forEach(function(n){n.classList.remove('is-active');});
+    t.classList.add('is-active'); paint(k);
+  });
+  document.addEventListener('focusin', function(e){
+    var t = e.target.closest && e.target.closest('.term'); if(!t) return;
+    var k = t.getAttribute('data-term'); if(!k || !D[k]) return;
+    document.querySelectorAll('.term.is-active').forEach(function(n){n.classList.remove('is-active');});
+    t.classList.add('is-active'); paint(k);
+  });
+  document.addEventListener('click', function(e){
+    var jump = e.target.closest && e.target.closest('[data-jump]');
+    if(jump){ e.preventDefault(); paint(jump.getAttribute('data-jump')); return; }
+    var t = e.target.closest && e.target.closest('.term'); if(!t) return;
+    var k = t.getAttribute('data-term'); if(!k || !D[k]) return;
+    document.querySelectorAll('.term.is-active').forEach(function(n){n.classList.remove('is-active');});
+    t.classList.add('is-active'); paint(k);
+  });
+  document.querySelectorAll('.term').forEach(function(t){ t.setAttribute('tabindex','0'); });
+})();
+</script>
+</body></html>
