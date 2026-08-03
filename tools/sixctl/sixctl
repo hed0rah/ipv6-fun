@@ -231,6 +231,56 @@ def cmd_explain(args):
     explain_addr(addr, net)
 
 
+LEET = {"o": "0", "i": "1", "l": "1", "s": "5", "t": "7", "z": "2", "g": "9", "q": "9"}
+GALLERY = ["1", "1337", "deadbeef", "c0ffee", "cafebabe", "badc0de", "feedface", "acce55", "d0d0", "f00d"]
+
+
+def leet_hex(word):
+    """Render a word as hex nibbles (native a-f plus leet o/i/l/s/t/z/g)."""
+    out, bad = [], []
+    for ch in word.lower():
+        if ch in "0123456789abcdef":
+            out.append(ch)
+        elif ch in LEET:
+            out.append(LEET[ch])
+        else:
+            bad.append(ch)
+    return "".join(out), sorted(set(bad))
+
+
+def cmd_vanity(args):
+    try:
+        net = ipaddress.ip_network(args.prefix, strict=False)
+    except ValueError as exc:
+        print(f"bad prefix: {exc}", file=sys.stderr)
+        sys.exit(1)
+    if net.version != 6:
+        print("vanity needs an IPv6 prefix", file=sys.stderr)
+        sys.exit(1)
+    base = int(net.network_address)
+
+    if args.word:
+        hexs, bad = leet_hex(args.word)
+        if not hexs:
+            print(f"can't render '{args.word}' - no chars map to hex", file=sys.stderr)
+            sys.exit(1)
+        if len(hexs) > 16:
+            print(f"# '{args.word}' is {len(hexs)} nibbles; keeping the last 16 (64-bit IID)")
+            hexs = hexs[-16:]
+        addr = ipaddress.IPv6Address(base + int(hexs, 16))
+        print(f"# vanity address for '{args.word}' in {net}")
+        print(f"  {addr}")
+        if bad:
+            print(f"  (dropped unmappable letters: {' '.join(bad)}; only 0-9 a-f + leet o i l s t z g map)")
+        print("  cute == guessable: this is exactly the low-entropy IID a target-generator")
+        print("  tries first (see 'sixctl scan --predict'). Great for a lab, terrible for hiding.")
+    else:
+        print(f"# hall-of-fame vanity IIDs in {net} (all trivially guessable):")
+        for w in GALLERY:
+            print(f"  {ipaddress.IPv6Address(base + int(w, 16))}   (from '{w}')")
+        print("encode your own:  sixctl vanity <prefix> deadbeef")
+
+
 def load_seed(path):
     """Read observed/hitlist IPv6 addresses (one per line, '#' comments, first token)."""
     addrs = []
@@ -336,6 +386,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_explain = sub.add_parser("explain", help="translate an IPv6 address / prefix / MAC to all its forms")
     p_explain.add_argument("target", help="IPv6 addr (2001:db8::1), prefix (2001:db8::/48), or a MAC")
     p_explain.set_defaults(func=cmd_explain)
+
+    p_vanity = sub.add_parser("vanity", help="make a cute/leet IPv6 address in a prefix (fun; also = guessable)")
+    p_vanity.add_argument("prefix", help="IPv6 prefix, e.g. 2001:db8:0:1::/64")
+    p_vanity.add_argument("word", nargs="?", help="word to leet-encode into the interface ID (omit for a gallery)")
+    p_vanity.set_defaults(func=cmd_vanity)
 
     p_ra = sub.add_parser("ra", help="[TODO] sniff or send router advertisements")
     p_ra.add_argument("action", choices=["sniff", "send"])
