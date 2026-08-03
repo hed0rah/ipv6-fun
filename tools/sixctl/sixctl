@@ -281,6 +281,145 @@ def cmd_vanity(args):
         print("encode your own:  sixctl vanity <prefix> deadbeef")
 
 
+def _sysctl(key):
+    try:
+        r = subprocess.run(["sysctl", "-n", key], capture_output=True, text=True)
+        return r.stdout.strip() or "?"
+    except FileNotFoundError:
+        return "?"
+
+
+def iid_grade(addr):
+    """Grade an interface ID's guessability: A (opaque) down to F (MAC-derived)."""
+    b = addr.packed[8:16]
+    iid = int.from_bytes(b, "big")
+    if b[3] == 0xFF and b[4] == 0xFE:
+        return "F", "EUI-64 - your MAC is in the address"
+    if iid == 0:
+        return "F", "all-zero IID (subnet-router anycast)"
+    if iid < 0x1_0000:
+        return "D", "low/small IID - a scanner's first guesses"
+    if len(set(b)) <= 3:
+        return "C", "low-entropy / repetitive byte pattern"
+    return "A", "opaque - random or RFC 7217 stable-privacy"
+
+
+def _globals_on(iface):
+    out = []
+    for line in run_ip(["-6", "-o", "addr", "show", "dev", iface, "scope", "global"]).splitlines():
+        m = re.search(r"inet6 ([0-9a-fA-F:]+)/(\d+)", line)
+        if m:
+            out.append((ipaddress.IPv6Address(m.group(1)), int(m.group(2))))
+    return out
+
+
+def cmd_audit(args):
+    iface = args.iface or detect_iface()
+    if not iface:
+        print("no interface with a global IPv6 address - pass one", file=sys.stderr)
+        sys.exit(1)
+    ranks = {"A": 0, "B": 1, "C": 2, "D": 3, "F": 4}
+    worst = None
+    print(f"== sixctl audit: IPv6 exposure of {iface} ==")
+    print("-- addresses (guessability grade) --")
+    globs = _globals_on(iface)
+    for a, _p in globs:
+        g, why = iid_grade(a)
+        print(f"  {str(a):<40} [{g}] {why}")
+        if worst is None or ranks[g] > ranks[worst]:
+            worst = g
+    if not globs:
+        print("  (no global addresses)")
+
+    print("-- knobs --")
+    ar = _sysctl(f"net.ipv6.conf.{iface}.accept_ra")
+    fwd = _sysctl("net.ipv6.conf.all.forwarding")
+    ut = _sysctl(f"net.ipv6.conf.{iface}.use_tempaddr")
+    mark = lambda bad, msg: print(f"  [{'!' if bad else '+'}] {msg}")
+    mark(ut != "2", f"use_tempaddr={ut}  " + ("(no privacy temp addrs; prefer 2)" if ut != "2" else "(privacy on)"))
+    mark(ar != "0" and fwd != "1", f"accept_ra={ar}  " + ("(accepts ANY RA -> rogue-RA risk; see 'sixctl ra-watch')" if ar != "0" else "(RAs ignored)"))
+    mark(fwd == "1", f"forwarding={fwd}  " + ("(this box ROUTES v6 - intended only if it's a router)" if fwd == "1" else "(host, not routing)"))
+
+    print("-- inbound firewall (no NAT in v6, so it's the whole perimeter) --")
+    seen = False
+    try:
+        r = subprocess.run(["nft", "list", "ruleset"], capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip():
+            seen = True
+            deny = "policy drop" in r.stdout
+            mark(not deny, "nftables: " + ("default-deny inbound detected" if deny else "no obvious default-deny - verify input/forward policy"))
+    except FileNotFoundError:
+        pass
+    if not seen:
+        print("  [?] couldn't read the ruleset (run as root, or none configured)")
+
+    print(f"-- headline: worst address grade [{worst or '-'}]  (A opaque .. F MAC-derived) --")
+    if worst in ("D", "F"):
+        print("  fix: sysctl use_tempaddr=2 (privacy addrs) or RFC 7217 stable-privacy IIDs.")
+
+
+def cmd_canary(args):
+    if args.action == "watch":
+        print("watching the kernel log for canary hits (Ctrl-C to stop)...")
+        subprocess.run(["sh", "-c",
+                        "journalctl -kf 2>/dev/null | grep --line-buffered sixctl-canary "
+                        "|| dmesg -w | grep --line-buffered sixctl-canary"])
+        return
+    iface = args.iface
+    if not iface:
+        print("canary up/down needs --iface", file=sys.stderr)
+        sys.exit(1)
+    addr = args.addr
+    if not addr:
+        g = _globals_on(iface)
+        if not g:
+            print("no global /64 on that iface - pass --addr", file=sys.stderr)
+            sys.exit(1)
+        net = ipaddress.ip_network(f"{g[0][0]}/{g[0][1]}", strict=False)
+        addr = str(ipaddress.IPv6Address(int(net.network_address) | 0xBABE))
+    if args.action == "up":
+        print(f"planting canary {addr} on {iface} (needs root)")
+        subprocess.run(["sudo", "ip", "-6", "addr", "add", f"{addr}/128", "dev", iface])
+        rules = ('table inet sixctl_canary {\n'
+                 '  chain input {\n'
+                 '    type filter hook input priority -300; policy accept;\n'
+                 f'    ip6 daddr {addr} log prefix "sixctl-canary: " level warn\n'
+                 '  }\n}\n')
+        subprocess.run(["sudo", "nft", "-f", "-"], input=rules, text=True)
+        print(f"any packet to {addr} now logs 'sixctl-canary:' to the kernel log.")
+        print("legit traffic uses your real random address, so a hit here == a scanner.")
+        print(f"  watch:  sixctl canary watch\n  stop :  sixctl canary down --iface {iface} --addr {addr}")
+    else:
+        subprocess.run(["sudo", "nft", "delete", "table", "inet", "sixctl_canary"])
+        subprocess.run(["sudo", "ip", "-6", "addr", "del", f"{addr}/128", "dev", iface])
+        print("canary removed (table + address).")
+
+
+def cmd_ra_watch(args):
+    iface = args.iface or detect_iface()
+    known = set()
+    for line in run_ip(["-6", "route", "show", "default"]).splitlines():
+        m = re.search(r"default via (\S+)", line)
+        if m:
+            known.add(m.group(1))
+    print(f"== sixctl ra-watch{(' on ' + iface) if iface else ''} ==")
+    print(f"trusted default router(s): {', '.join(sorted(known)) or '(none yet)'}")
+    print("watching for a NEW default router / prefix appearing - what a rogue RA installs.")
+    print("dependency-light (ip monitor, no root). Ctrl-C to stop.")
+    print("(full capture incl. non-routing RAs: nft log icmpv6 type 134, or rdisc6.)")
+    p = subprocess.Popen(["ip", "-6", "monitor", "route"], stdout=subprocess.PIPE, text=True)
+    try:
+        for line in p.stdout:
+            m = re.search(r"default via (\S+)", line)
+            if m and m.group(1) not in known:
+                known.add(m.group(1))
+                print(f"  [ALERT] new default router {m.group(1)} - possible ROGUE RA!")
+            elif re.match(r"^[23][0-9a-fA-F:]+/\d", line.strip()):
+                print(f"  [note] new global prefix route: {line.strip()}")
+    except KeyboardInterrupt:
+        p.terminate()
+
+
 def load_seed(path):
     """Read observed/hitlist IPv6 addresses (one per line, '#' comments, first token)."""
     addrs = []
@@ -391,6 +530,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_vanity.add_argument("prefix", help="IPv6 prefix, e.g. 2001:db8:0:1::/64")
     p_vanity.add_argument("word", nargs="?", help="word to leet-encode into the interface ID (omit for a gallery)")
     p_vanity.set_defaults(func=cmd_vanity)
+
+    p_audit = sub.add_parser("audit", help="score this host's IPv6 exposure (address grades, RA risk, firewall)")
+    p_audit.add_argument("iface", nargs="?", help="interface (default: first with a global address)")
+    p_audit.set_defaults(func=cmd_audit)
+
+    p_canary = sub.add_parser("canary", help="plant a decoy address that logs any scanner that touches it")
+    p_canary.add_argument("action", choices=["up", "watch", "down"])
+    p_canary.add_argument("--iface", help="interface to plant the canary on")
+    p_canary.add_argument("--addr", help="canary address (default: <iface /64>::babe)")
+    p_canary.set_defaults(func=cmd_canary)
+
+    p_rawatch = sub.add_parser("ra-watch", help="passively alert on new/rogue Router Advertisements")
+    p_rawatch.add_argument("iface", nargs="?", help="interface (default: first with a global address)")
+    p_rawatch.set_defaults(func=cmd_ra_watch)
 
     p_ra = sub.add_parser("ra", help="[TODO] sniff or send router advertisements")
     p_ra.add_argument("action", choices=["sniff", "send"])

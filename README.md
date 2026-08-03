@@ -93,6 +93,12 @@ sixctl scan --predict 2001:db8:0:1::/64 --out targets.txt
                              #   zmap --ipv6-source-ip=$SRC --ipv6-target-file=targets.txt -M icmp6_echoscan
 sixctl scan --seed hitlist.txt --out targets.txt
                              #   ingest observed / IPv6-Hitlist addresses (union + dedupe)
+sixctl vanity 2001:db8::/64 deadbeef   # cute/leet address (fun; also = guessable)
+sixctl audit [iface]         # exposure scorecard: address guessability grades
+                             #   (A opaque .. F MAC-derived) + rogue-RA risk + firewall
+sixctl canary up --iface eth0   # plant a decoy addr; any packet to it logs = a scanner
+                             #   sixctl canary watch   (tail log) | down (remove)
+sixctl ra-watch [iface]      # passively alert on a new/rogue Router Advertisement
 sixctl ra sniff|send          # TODO: sniff or send router advertisements (needs scapy)
 sixctl craft                 # TODO: interactive header-chain builder (needs scapy)
 ```
