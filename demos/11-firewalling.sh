@@ -1,17 +1,25 @@
 #!/usr/bin/env bash
-# 11 - firewalling
-#
-# purpose: the ip6tables/nftables gotchas that don't exist in v4 land -
-#          which ICMPv6 types must never be blocked, why extension
-#          headers break naive stateless filters, and what RA Guard
-#          actually protects against (and how it can be evaded, ties
-#          back to demos/10-attack-lab)
-# prereqs: root, ip6tables or nftables
-# planned commands:
-#   ip6tables -L -v                                  # inspect current v6 ruleset
-#   nft list ruleset
-#   ip6tables -A INPUT -p icmpv6 --icmpv6-type 135 -j ACCEPT  # NS must pass
-#   see cheatsheet.md's ICMPv6 table for the full must-allow list
-
+# 11 - Firewalling: no NAT in IPv6, so the firewall IS the perimeter.
+# Read-only review of the v6 ruleset. usage: ./11-firewalling.sh
 set -euo pipefail
-echo "not yet implemented"
+echo "== the IPv6 firewall mindset =="
+echo "no NAT means every host is globally routable and reachable UNLESS a firewall"
+echo "says no - nothing is accidentally hidden. So input/forward chains ARE the"
+echo "perimeter: default-deny inbound, allow only what you mean to expose. And never"
+echo "blanket-drop ICMPv6 (kills RAs + neighbor resolution) - see 05-icmpv6.sh."
+echo
+printf "== forwarding (is this box a router?) ==\n  net.ipv6.conf.all.forwarding = %s\n" \
+  "$(sysctl -n net.ipv6.conf.all.forwarding 2>/dev/null || echo '?')"
+echo
+if command -v nft >/dev/null && nft list ruleset >/dev/null 2>&1; then
+  echo "== nftables (inet/ip6 tables, chain policies, icmpv6 rules) =="
+  nft list ruleset 2>/dev/null | grep -iE 'table (inet|ip6)|chain (input|forward|output)|policy |icmpv6|ct state' | sed 's/^/  /' | head -40
+elif command -v ip6tables >/dev/null && ip6tables -S >/dev/null 2>&1; then
+  echo "== ip6tables (policies + rules) =="
+  ip6tables -S 2>/dev/null | sed 's/^/  /' | head -40
+else
+  echo "  (no readable v6 ruleset - need root, or none configured)"
+fi
+echo
+echo "audit lens: every inbound 'accept' to a host = that host is exposed on the"
+echo "internet (no NAT to hide behind). Cross-check against your shields toolkit."

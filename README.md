@@ -59,10 +59,10 @@ light its bytes, click for a lookup table) and one running example
 host/address, so they cross-reference cleanly. `ndp_snoop` and
 `xdp_ra_guard` are BCC/XDP tools in the same style as
 [bpf-fun](https://github.com/hed0rah/bpf-fun) - see their own READMEs for
-usage. `demos/10-attack-lab` and `tools/frag6` are fully implemented.
-`demos/02` through `09`/`11`/`12`, `tools/craft6`, and `sixctl`'s
-`ra`/`scan`/`craft` subcommands are still scaffolded but not yet
-implemented - this repo fills in incrementally.
+usage. All demos (`01`-`12`), `demos/10-attack-lab`, `tools/frag6`, and
+`sixctl`'s `addrs`/`ndp`/`explain`/`scan` are implemented. The read-only
+demos (`01`-`09`, `11`, `12`) need only iproute2/iputils; `06` needs scapy.
+Still scaffolded: `tools/craft6` and `sixctl`'s `ra`/`craft` (both want scapy).
 
 ## Usage
 
